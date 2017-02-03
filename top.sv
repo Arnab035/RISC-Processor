@@ -43,8 +43,8 @@ module top
       end
 
       else if(bus_respcyc) begin
-        ir <= bus_resp;
-        $display(ir);
+        $display(ir[31:0]);
+		$display(ir[63:32]);
         pc <= pc + 8;
         bus_respack <= 1;
       end
@@ -56,7 +56,10 @@ module top
       end
       
 
-  end
+	end
+	assign ir = bus_resp;
+	
+
 
   initial begin
     $display("Initializing top, entry point = 0x%x", entry);
