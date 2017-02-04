@@ -195,15 +195,27 @@ always_comb begin
 					else if(ir[31:25] == 7'b0100000) begin
 						inst = {"subw ", };
 					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"mulw ", } ;
+					end
 				3'b001:
 					inst = {"sllw ", };
 				3'b101:
 					if(ir[31:25] == 7'b0000000) begin
 						inst = {"srlw ", };
 					end
-					else if(ir[31:25] == 7'b0000001) begin
+					else if(ir[31:25] == 7'b0100000) begin
 						inst = {"sraw ", };
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"divuw ", };
 					end;
+				3'b100:
+					inst = {"divw ", } ;
+				3'b110:
+					inst = {"remw", } ;
+				3'b111:
+					inst = {"remuw", } ;
 				default:
 					// TODO: default do something here
 			endcase;
