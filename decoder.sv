@@ -7,6 +7,8 @@ module decoder
 
 // the below piece of code can be made into a function..
 
+// ******************************************rv32i base instruction set ***********************************************
+
 always_comb begin
 	case(ir[6:0])
 		7'b0010011 : 
@@ -133,7 +135,68 @@ always_comb begin
 				default:
 					// TODO: default do something here
 			endcase
-						
+		7'b0111011:
+			case(ir[14:12])
+				3'b000:
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"addw ", } ;
+					end
+					else if(ir[31:25] == 7'b0100000) begin
+						inst = {"subw ", };
+					end
+				3'b001:
+					inst = {"sllw ", };
+				3'b101:
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"srlw ", };
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"sraw ", };
+					end;
+				default:
+					// TODO: default do something here
+			endcase;
+		7'b0011011:
+			case(ir[14:12])
+				3'b000:
+					inst = {"addiw", };
+				3'b001:
+					inst = {"slliw", };
+				3'b101:
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"srliw", };
+					end
+					else if(ir[31:25] == 7'b0100000) begin
+						inst = {"sraiw", };
+					end
+				default:
+					// TODO: default do something here
+			endcase
+		7'b0010011:
+			case(ir[14:12])
+				3'b001:
+					inst = {"slli ", };
+				3'b101:
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"srli ",} ;
+					else if(ir[31:25] == 7'b0000000) begin
+						inst = {"srai ", };
+				default:
+					// TODO: default do something here
+			endcase
+		7'b0000011:
+			case(ir[14:12])
+				3'b110:
+					inst = {"lwu ", };
+				3'b011:
+					inst = {"ld ", };
+				default:
+					// TODO: default do something here
+			endcase
+		7'b0100011:
+			inst = {"sd ",};
+		
+				
 				
 				
 
