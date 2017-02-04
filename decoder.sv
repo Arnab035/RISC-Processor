@@ -136,61 +136,76 @@ always_comb begin
 			case(ir[14:12])
 				3'b000:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"add", } ;
+						$display("add	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"sub", } ;
+						if(ir[19:15]==5'd0) begin
+							$display("neg	%s,%s", find_register(ir[11:7]), find_register(ir[24:20]));
+						end else
+						begin
+							$display("sub	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
+						end
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"mul", } ;
+						$display("mul	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b001:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"sll", } ;
+						$display("sll	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 					else if(ir[31:25] = 7'b0000001) begin
-						inst = {"mulh", };
+						$display("mulh	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b010:
-					if(ir[31:25] == 7'b0000000) begin 
-						inst = {"slt", } ;
+					if(ir[31:25] == 7'b0000000) begin
+						if(ir[19:15] == 5'd0) begin
+							$display("sgtz	%s,%s", find_register(ir[11:7]), find_register(ir[24:20]));
+						end else if(ir[24:20] == 5'd0) begin
+							$display("sltz	%s,%s", find_register(ir[11:7]), find_register(ir[19:15]));
+						end else begin
+							$display("slt  %s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
+						end
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"mulhsu", } ;
+						$display("mulhsu	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b011:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"sltu", };
+						if(ir[19:15] == 5'd0) begin 
+							$display("snez	%s,%s", find_register(ir[11:7]), find_register(ir[24:20]));
+						end else begin
+							$display("sltu	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
+						end
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"mulhu ", };
+						$display("mulhu	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b100:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"xor", } ;
+						$display("xor	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]) ) ;
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"div", };
+						$display("div	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]) );
 					end
 				3'b101:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"srl", } ;
+						$display("srl	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"sra", };
+						$display("sra	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"divu", };
+						$display("divu	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 				3'b110:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"or", } ;
+						$display("or	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					else if(ir[31:25] == 7'b0000001 ) begin
-						inst = {"rem", };
+						$display("rem	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b111:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"and", } ;
+						$display("and	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19;15]), find_register(ir[24:20])) ;
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"remu", } ;
+						$display("remu	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 			endcase
 		7'b1100011:
