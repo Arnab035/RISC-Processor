@@ -2,11 +2,7 @@
 module decoder
 (
 	input [31:0] ir, // this comes from instruction fetch module
-	output string inst  // final instruction output
 );
-
-// the below piece of code can be made into a function..
-
 //******************************************** helper functions defined here ************************************************//
 
 function string find_register;
@@ -80,8 +76,6 @@ function string find_register;
 		endcase
 	end
 endfunction
-
-function find_immediate;
 
 //****************************************************************************************************************************//
 
@@ -202,9 +196,9 @@ always_comb begin
 					// TODO: default do something here
 			endcase
 		7'b0110111:
-			inst = {"lui  ", find_destination_register(ir[11:7]), ",", find_immediate(ir[12:31]) };
+			$display("lui	%s,0x%h", find_register(ir[11:7]), ir[31:12]);
 		7'b0010111:
-			inst = {"auipc", find_destination_register(ir[11:7]), ",", find_immediate(ir[12:31]) };
+			$display("auipc	%s,0x%h, find_register(ir[11:7], ir[31:12]);
 		7'b1101111:
 			inst = {"jal", } ;
 		7'b1100111:
