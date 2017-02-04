@@ -35,6 +35,18 @@ always_comb begin
 						inst = {"srai", } ;
 					end
 			endcase
+		7'b0100011:
+			case(ir[14:12]) begin
+				3'b000:
+					inst = {"sb ", };
+				3'b001:
+					inst = {"sh ", };
+				3'b010:
+					inst = {"sw ", };
+				3'b011:
+					inst = {"sd ", };
+				default:
+					// TODO: default case.
 		7'b0110011:
 			case(ir[14:12])
 				3'b000:
@@ -44,23 +56,57 @@ always_comb begin
 					else if(ir[31:25] == 7'b0100000) begin
 						inst = {"sub", } ;
 					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"mul", } ;
+					end
 				3'b001:
-					inst = {"sll", } ;
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"sll", } ;
+					end
+					else if(ir[31:25] = 7'b0000001) begin
+						inst = {"mulh", };
+					end
 				3'b010:
-					inst = {"slt", } ;
+					if(ir[31:25] == 7'b0000000) begin 
+						inst = {"slt", } ;
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"mulhsu", } ;
+					end
 				3'b011:
-					inst = {"sltu", };
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"sltu", };
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"mulhu ", };
+					end
 				3'b100:
-					inst = {"xor", } ;
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"xor", } ;
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"div", };
+					end
 				3'b101:
-					if(ir[31:25] = 7'b0000000) begin
+					if(ir[31:25] == 7'b0000000) begin
 						inst = {"srl", } ;
-					else if(ir[31:25] = 7'b0100000) begin
+					else if(ir[31:25] == 7'b0100000) begin
 						inst = {"sra", };
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"divu", };
 				3'b110:
-					inst = {"or"} ;
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"or", } ;
+					else if(ir[31:25] == 7'b0000001 ) begin
+						inst = {"rem", };
+					end
 				3'b111:
-					inst = {"and"} ;
+					if(ir[31:25] == 7'b0000000) begin
+						inst = {"and", } ;
+					end
+					else if(ir[31:25] == 7'b0000001) begin
+						inst = {"remu", } ;
+					end
 			endcase
 		7'b1100011:
 			case(ir[14:12])
@@ -99,8 +145,13 @@ always_comb begin
 					inst = {"lbu", };
 				3'b101:
 					inst = {"lhu", };
+				3'b110:
+					inst = {"lwu ", };
+				3'b011:
+					inst = {"ld ", };
 				default:
 					// TODO: default do something here
+			endcase
 			endcase
 		7'b0001111:
 			case(ir[14:12])
@@ -172,32 +223,4 @@ always_comb begin
 				default:
 					// TODO: default do something here
 			endcase
-		7'b0010011:
-			case(ir[14:12])
-				3'b001:
-					inst = {"slli ", };
-				3'b101:
-					if(ir[31:25] == 7'b0000000) begin
-						inst = {"srli ",} ;
-					else if(ir[31:25] == 7'b0000000) begin
-						inst = {"srai ", };
-				default:
-					// TODO: default do something here
-			endcase
-		7'b0000011:
-			case(ir[14:12])
-				3'b110:
-					inst = {"lwu ", };
-				3'b011:
-					inst = {"ld ", };
-				default:
-					// TODO: default do something here
-			endcase
-		7'b0100011:
-			inst = {"sd ",};
-		
-				
-				
-				
-
 end
