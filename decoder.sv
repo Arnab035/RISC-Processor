@@ -84,25 +84,40 @@ always_comb begin
 		7'b0010011 : 
 			case(ir[14:12])
 				3'b000 :
-					inst = {"addi  ", } ; 
+					if(ir[31:20] == 11'd0 && ir[11:7] == 5'd0 && ir[19:15] == 5'd0) begin
+						$display("nop");
+					end
+					else if(ir[31:20] == 11'd0) begin
+						$display("mv	%s,%s", find_register(ir[11:7]) ,find_register(ir[19:15]));
+					end else begin
+						$display("addi	%s,%s,%d", find_register(ir[11:7]) ,find_register(ir[19:15]), ir[31:20]);
+					end
 				3'b010:
-					inst = {"slti", } ;
+					$display("slti	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 				3'b011:
-					inst = {"sltiu", } ;
+					if(ir[31:20] == 11'd1) begin
+						$display("seqz	%s,%s", find_register(ir[11:7]), find_register(ir[19:15]));
+					end else begin
+						$display("sltiu	%s,%s,%d", find_regsiter(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
+					end
 				3'b100:
-					inst = {"xori", } ;
+					if(ir[31:20] == -11'd1) begin
+						$display("not	%s,%s", find_register(ir[11:7]), find_register(ir[19:15]));
+					end else begin
+						$display("xori	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
+					end
 				3'b110:
-					inst = {"ori", };
+					$display("ori	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 				3'b111:
-					inst = {"andi", };
+					$display("andi	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]) ;
 				3'b001:
-					inst = {"slli", };
+					$display("slli	%s,%s,0x%h", find_register(ir[11:7]), find_register(ir[19:15]), ir[24:20]);
 				3'b101:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"srli", } ;
+						$display("srli	%s,%s,0x%h", find_register(ir[11:7]), find_register(ir[19:15]), ir[24:20]) ;
 					end
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"srai", } ;
+						%display("srai	%s,%s,0x%h", find_register(ir[11:7]), find_register(ir[19:15]), ir[24:20]) ;
 					end
 			endcase
 		7'b0100011:
@@ -198,7 +213,7 @@ always_comb begin
 		7'b0110111:
 			$display("lui	%s,0x%h", find_register(ir[11:7]), ir[31:12]);
 		7'b0010111:
-			$display("auipc	%s,0x%h, find_register(ir[11:7], ir[31:12]);
+			$display("auipc	%s,0x%h", find_register(ir[11:7]), ir[31:12]);
 		7'b1101111:
 			inst = {"jal", } ;
 		7'b1100111:
