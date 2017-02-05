@@ -95,6 +95,16 @@ function int compute_conditional_jump;
 	end
 endfunction
 
+function calculate_jump;
+	input [31:0] pc;
+	input [19:0] immediate;
+	
+	begin
+		int adder = (immediate >> 8) ; // sign extension to be implemented.
+		calculate_jump = pc + adder;
+	end
+endfunction
+
 //****************************************************************************************************************************//
 
 always_comb begin
