@@ -77,7 +77,23 @@ function string find_register;
 	end
 endfunction
 
-function compute_offset
+function int compute_offset;
+	input [6:0] offset_high;
+	input [5:0] offset_low;
+	begin
+		compute_offset = (offset_high << 5) | (offset_low) ;
+	end
+endfunction
+
+function int compute_conditional_jump;
+	input [31:0] pc;
+	input [6:0] offset_1;
+	input [5:0] offset_2;
+	begin
+		int adder = (offset_1 << 5) | (offset_2) ;
+		compute_conditional_jump = pc + adder ;
+	end
+endfunction
 
 //****************************************************************************************************************************//
 
@@ -212,20 +228,36 @@ always_comb begin
 			endcase
 		7'b1100011:
 			case(ir[14:12])
-				3'b000:
-					inst = {"beq", };
-				3'b001:
-					inst = {"bne", };
-				3'b100:
-					inst = {"blt", };
-				3'b101:
-					inst = {"bge", };
-				3'b110:
-					inst = {"bltu", };
+				3'b000: 
+					if(ir[24:20] == 5'd0) begin
+						$display("beqz	%s,0x%h", find_register(ir[19:15]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end else begin
+						$display("beq	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end
+				3'b001:	
+					if(ir[24:20] == 5'd0) begin
+						$display("bnez	%s,0x%h", find_register(ir[19:15]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end else begin
+						$display("bne	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end
+				3'b100: 
+					if(ir[24:20] == 5'd0) begin
+						$display("bltz	%s,0x%h", find_register(ir[19:15]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end else begin
+						$display("blt	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end
+				3'b101: 
+					if(ir[24:20] == 5'd0) begin
+						$display("bgez	%s,0x%h", find_register(ir[19:15]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end else begin
+						$display("bge	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
+					end
+				3'b110: 
+					$display("bltu	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
 				3'b111:
-					inst = {"bgeu", };
+					$display("bgeu	%s,%s,0x%h", find_register(ir[19:15]), find_register(ir[24:20]), compute_conditional_jump(pc, ir[31:25], ir[11:7]));
 				default:
-					// TODO: default do something here
+					$display("wrong opcode format");
 			endcase
 		7'b0110111:
 			$display("lui	%s,0x%h", find_register(ir[11:7]), ir[31:12]);
@@ -262,7 +294,7 @@ always_comb begin
 				3'b011: 
 					$display("ld	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
 				default:
-					// TODO: default do something here
+					$display("wrong opcode format");
 			endcase
 		7'b0111011:
 			case(ir[14:12])
@@ -300,7 +332,7 @@ always_comb begin
 				3'b111:
 					$display("remuw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 				default:
-					// TODO: default do something here
+					$display("wrong opcode format") ;
 			endcase;
 		7'b0011011:
 			case(ir[14:12])
