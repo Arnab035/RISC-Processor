@@ -268,49 +268,54 @@ always_comb begin
 			case(ir[14:12])
 				3'b000:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"addw ", } ;
+						$display("addw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 					end
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"subw ", };
+						if(ir[19:15] == 5'd0) begin
+							$display("negw	%s,%s", find_register(ir[11:7]), find_register(ir[24:20]));
+						end else
+							$display("subw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
+						begin
+						end
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"mulw ", } ;
+						$display("mulw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 					end
 				3'b001:
-					inst = {"sllw ", };
+					$display("sllw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 				3'b101:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"srlw ", };
+						$display("srlw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 					end
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"sraw ", };
+						$display("sraw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 					end
 					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"divuw ", };
+						$display("divuw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20]));
 					end;
 				3'b100:
-					inst = {"divw ", } ;
+					$display("divw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 				3'b110:
-					inst = {"remw", } ;
+					$display("remw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 				3'b111:
-					inst = {"remuw", } ;
+					$display("remuw	%s,%s,%s", find_register(ir[11:7]), find_register(ir[19:15]), find_register(ir[24:20])) ;
 				default:
 					// TODO: default do something here
 			endcase;
 		7'b0011011:
 			case(ir[14:12])
 				3'b000:
-					inst = {"addiw", };
+					$display("addiw	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 				3'b001:
-					inst = {"slliw", };
+					$display("slliw	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 				3'b101:
 					if(ir[31:25] == 7'b0000000) begin
-						inst = {"srliw", };
+						$display("srliw	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 					end
 					else if(ir[31:25] == 7'b0100000) begin
-						inst = {"sraiw", };
+						$display("sraiw	%s,%s,%d", find_register(ir[11:7]), find_register(ir[19:15]), ir[31:20]);
 					end
 				default:
-					// TODO: default do something here
+					$display("wrong opcode format");
 			endcase
 end
