@@ -1,7 +1,7 @@
 
 module decoder
 (
-	input [31:0] ir, // this comes from instruction fetch module
+	input signed [31:0] ir, // this comes from instruction fetch module
 );
 //******************************************** helper functions defined here ************************************************//
 
@@ -77,6 +77,8 @@ function string find_register;
 	end
 endfunction
 
+function compute_offset
+
 //****************************************************************************************************************************//
 
 always_comb begin
@@ -122,14 +124,14 @@ always_comb begin
 			endcase
 		7'b0100011:
 			case(ir[14:12]) begin
-				3'b000:
-					inst = {"sb ", };
-				3'b001:
-					inst = {"sh ", };
-				3'b010:
-					inst = {"sw ", };
-				3'b011:
-					inst = {"sd ", };
+				3'b000: 
+					$display("sb	%s,%d(%s)", find_register(ir[24:20]), compute_offset(ir[31:25], ir[11:7]), find_register(ir[19:15]));
+				3'b001: 
+					$display("sh	%s,%d(%s)", find_register(ir[24:20]), compute_offset(ir[31:25], ir[11:7]), find_register(ir[19:15]));
+				3'b010:	
+					$display("sw	%s,%d(%s)", find_register(ir[24:20]), compute_offset(ir[31:25], ir[11:7]), find_register(ir[19:15]));
+				3'b011:	
+					$display("sd	%s,%d(%s)", find_register(ir[24:20]), compute_offset(ir[31:25], ir[11:7]), find_register(ir[19:15]));
 				default:
 					// TODO: default case.
 		7'b0110011:
@@ -230,59 +232,35 @@ always_comb begin
 		7'b0010111:
 			$display("auipc	%s,0x%h", find_register(ir[11:7]), ir[31:12]);
 		7'b1101111:
-			inst = {"jal", } ;
+			if(ir[11:7] == 5'd0) begin
+				$display("j	0x%h", calculate_jump(pc, ir[31:12]) ) ;  // right shift offset by 8 --> add to pc
+			end else if(ir[11:7] == 5'd1) begin
+				$display("jal	0x%h", calculate_jump(pc, ir[31:12]) ) ;
+			end
 		7'b1100111:
-			inst = {"jalr", };
+			if(ir[11:7] == 5'd0 && ir[31:20] == 12'd0) begin
+				$display("jr	%s", find_register(ir[19:15]));
+			end else if(ir[11:7] == 5'd1 && ir[31:20] == 12'd0) begin
+				$display("jalr	%s", find_register(ir[19:15]));
+			end else if(ir[11:7] == 5'd0 && ir[19:15] == 5'd1 && ir[31:20] == 12'd0) begin
+				$display("ret");
+			end
 		7'b0000011:
 			case(ir[14:12])
-				3'b000:
-					inst = {"lb ",} ;
-				3'b001:
-					inst = {"lh ", };
-				3'b010:
-					inst = {"lw", };
-				3'b100:
-					inst = {"lbu", };
-				3'b101:
-					inst = {"lhu", };
-				3'b110:
-					inst = {"lwu ", };
-				3'b011:
-					inst = {"ld ", };
-				default:
-					// TODO: default do something here
-			endcase
-			endcase
-		7'b0001111:
-			case(ir[14:12])
-				3'b000:
-					inst = {"fence", } ;
-				3'b001:
-					inst = {"fence.i", };
-				default:
-					// TODO: default do something here
-			endcase
-		7'b1110011:
-			case(ir[14:12])
-				3'b000:
-					if(ir[31:25] == 7'b0000000) begin
-						inst = {"ecall", };
-					end
-					else if(ir[31:25] == 7'b0000001) begin
-						inst = {"ebreak", };
-					end
-				3'b001:
-					inst = {"csrrw ", };
-				3'b010:
-					inst = {"csrrs ", };
-				3'b011:
-					inst = {"csrrc ", };
-				3'b101:
-					inst = {"csrrwi ", };
-				3'b110:
-					inst = {"csrrsi ", };
-				3'b111:
-					inst = {"csrrci ", };
+				3'b000: 
+					$display("lb	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15])) ;
+				3'b001: 
+					$display("lh	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15])) ;
+				3'b010: 
+					$display("lw	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
+				3'b100: 
+					$display("lbu	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
+				3'b101:	
+					$display("lhu	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
+				3'b110: 
+					$display("lwu	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
+				3'b011: 
+					$display("ld	%s,%d(%s)", find_register(ir[11:7]), ir[31:20], find_register(ir[19:15]));
 				default:
 					// TODO: default do something here
 			endcase
