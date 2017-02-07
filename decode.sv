@@ -335,7 +335,7 @@ function decode(
 						$display("  %0h:\t%h\tjalr\t%s",pc, ir[31:0], register_file[ir[19:15]]);
 					end 
 				default:
-					$display("coming up ..");
+					// TODO: do nothing...
 				endcase
 			ir = ir >> 32;
 			pc += 4;

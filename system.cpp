@@ -191,7 +191,7 @@ void System::tick(int clk) {
 }
 
 void System::dram_read_complete(unsigned id, uint64_t address, uint64_t clock_cycle) {
-    cout << "Hello !" << endl;
+    
     map<uint64_t, int>::iterator tag = addr_to_tag.find(address);
     assert(tag != addr_to_tag.end());
     for(int i = 0; i < 64; i += 8) {
