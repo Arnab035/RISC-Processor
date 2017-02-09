@@ -53,7 +53,7 @@ function decode(
 	register_file[31] = "t6";
 	
 	begin
-		for(int i = 0; i < 2; i++) begin // loop twice for 64-bit data - fetch 32-bit in first loop
+		for(int i = 0; i < 2 && ir; i++) begin // loop twice for 64-bit data - fetch 32-bit in first loop
 			case(ir[6:0])
 				7'b0010011: 
 					case(ir[14:12])
@@ -334,8 +334,7 @@ function decode(
 					end else if(ir[11:7] == 5'd1 && ir[31:20] == 12'd0) begin
 						$display("  %0h:\t%h\tjalr\t%s",pc, ir[31:0], register_file[ir[19:15]]);
 					end 
-				default:
-					// TODO: do nothing...
+				
 				endcase
 			ir = ir >> 32;
 			pc += 4;
