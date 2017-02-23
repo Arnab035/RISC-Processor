@@ -48,8 +48,7 @@ assign dataB = rB;
 	.dataA(dataA),
 	.dataB(dataB),
 	.alu_control(alu_control),
-	.muxB_control(muxB_control)
- )
+)
 
 
 
