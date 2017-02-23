@@ -13,6 +13,8 @@ module register_file
 )
 (   
 	input clk,
+	input alu_control,   // which alu operation to perform
+	input muxB_control, // multiplexer selects immediate or register
     input write_en,  // ALU SETS THE WRITE-EN LOGIC
 	input [4:0] addressA, 
 	input [4:0] addressB,
@@ -41,6 +43,13 @@ assign dataB = rB;
 
 
 // define alu module here
+
+ alu a (
+	.dataA(dataA),
+	.dataB(dataB),
+	.alu_control(alu_control),
+	.muxB_control(muxB_control)
+ )
 
 
 
