@@ -13,6 +13,7 @@ module alu
 );
 
 reg [BUS_DATA_WIDTH-1 : 0] val = 0;
+reg [BUS_DATA_WIDTH-1 : 0] x;
 
 always @ (posedge clk) begin
 	case(alu_control)
@@ -119,21 +120,27 @@ always @ (posedge clk) begin
 	endcase
 end
 
-if(alu_control > 6'b010101) begin
-	if(alu_control < 6'b011111 || alu_control >= 6'b100111) begin
-		assign x = {{32{val[31]}}, val[31:0]};
-		assign dataOut = x;
-	end
-	else if(alu_control >= 6'b100000 && alu_control <= 6'b100010) begin
-		assign x = {32{0}, val[63:32]};
-		assign dataOut = x;
+always_comb begin
+	if(alu_control > 6'b010101) begin
+		if(alu_control < 6'b011111 || alu_control >= 6'b100111) begin
+			x = {{32{val[31]}}, val[31:0]};
+			dataOut = x;
+		end
+		else if(alu_control >= 6'b100000 && alu_control <= 6'b100010) begin
+			x = {32{0}, val[63:32]};
+			dataOut = x;
+		end
 	end
 	else begin
-		assign dataOut = val;
+		dataOut = val;
 	end
 end
 
+// instantiate writeback stage here
 
+writeback wb (
+	.dataIn(dataOut)
+);
 		
 		
  			
