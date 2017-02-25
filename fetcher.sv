@@ -36,9 +36,9 @@ always @ (posedge clk)
 
 always_comb
 	if(count % 2 == 0) begin 
-		assign memdata[0] = data[63:32];
+		memdata[0] = data[63:32];
 	end else begin
-		assign memdata[1] = data[63:32];
+		memdata[1] = data[63:32];
 	end
 
 assign outIns = ins;
