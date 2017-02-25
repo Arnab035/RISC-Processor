@@ -1,5 +1,4 @@
 `include "Sysbus.defs"
-//`include "fetcher.sv"
 
 module top
 #(
@@ -24,8 +23,12 @@ module top
   input  [BUS_TAG_WIDTH-1:0] bus_resptag
 );
 
-  logic [63:0] pc, ir;
-
+  logic [63:0] pc;
+  logic [31:0] ir, x;
+  logic fetch_en = 0;
+  logic[31:0] count = 1'd1;
+  
+  
   enum {state_init = 2'b00, 
 		state_bus_request_sent = 2'b01, 
 		state_stop_bus_request = 2'b10, 
@@ -55,22 +58,25 @@ module top
 		state_receive_bus_data:
 			begin
 				if(bus_respcyc) begin
-					decode_en = 1;
+					fetch_en = 1;
 					next_state = state_receive_bus_data ;
+					count_next = count + 1;
 				end else begin
 					next_state = state_init ;
-					decode_en = 0;
+					fetch_en = 0;
 				end
 			end
-		endcase
+	endcase
   end
 
   always @ (posedge clk)
     if (reset) begin
       pc <= entry;
 	  state <= state_init;
+	  
     end else begin
 	  state <= next_state;
+	  
 	  if(state != next_state && next_state == state_stop_bus_request) begin
 		bus_req <= 0;
 		bus_reqtag <= 0;
@@ -78,6 +84,7 @@ module top
 		bus_respack <= 0;
 		pc <= pc + 64;
 	  end
+	  
 	end
 	
 	// always ff output logic //
@@ -99,6 +106,7 @@ module top
 			end
 		state_receive_bus_data:
 			begin
+				count <= count_next; //keeps count of number of instructions
 				bus_req <= 0;
 				bus_reqtag <= 0;
 				bus_reqcyc <= 0;
@@ -106,31 +114,23 @@ module top
 				if(bus_resp == 0) begin
 					$finish;
 				end
-				ir <= bus_resp;
 			end
 	endcase
-  
-  
+	assign ir = bus_resp;
+	
+	
   initial begin
     $display("Initializing top, entry point = 0x%x", entry);
   end
   
-   decoder d (
+  
+  fetcher d (
     .clk (clk),
-    .decode_en (decode_en),
-    .data(bus_resp)
-  );
+    .fetch_en (fetch_en),
+    .data(ir),
+	.count(count)
+  ); 
+  
 
-  /*
-  fetcher f (
-    .clk (clk),
-    .pc (pc),
-    .bus_respcyc (bus_respcyc),
-    .bus_resp (bus_resp),
-    .bus_reqcyc (bus_reqcyc),
-    .bus_req (bus_req),
-    .bus_reqtag (bus_reqtag),
-    .bus_respack (bus_respack)
-  );
-  */
+ 
 endmodule
