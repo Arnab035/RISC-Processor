@@ -8,44 +8,38 @@ module fetcher
   input  clk,
   input  fetch_en,
   input  [BUS_DATA_WIDTH-1:0] data,
-  input  count    // must count the instruction number
+  input count 
 );
  
-logic memOrData = 0;
+reg [63:0] memdata[15:0] ;  // 16 * 32 memory stores instructions
+
+logic access = 1;
+reg [31:0] ins, outIns;
  
-reg [31:0] memdata[1:0] ;  // 2 * 31 memory
- 
+always_comb begin
+	if(count) begin
+		memdata[2*count - 2] = data[31:0];
+		memdata[2*count - 1] = data[63:32];
+	end
+end
+	
 always @ (posedge clk)
-	// decide which bits you want to send
 	if(fetch_en) begin
-		if(!memOrData) begin
-			ins <= data[31:0];
-			memOrData <= 1;
+		if(access) begin
+			ins <= memdata[2* count - 2];
+			access <= 0;
 		end else begin
-			if(count % 2 == 0) begin
-				ins <= memdata[0];  // plan to store it in memory , so next clock pulse not overwrites it
-			end else begin
-				ins <= memdata[1];
-			end
-			memOrData <= 0;
+			ins <= memdata[2 * count - 1]; 
+			access <= 1;
 		end
 	end
-
-// have to use a 2-ary memory otherwise overwrites may happen again:-
-// odd numbered data go to 1, even go to 0
-
-always_comb
-	if(count % 2 == 0) begin 
-		memdata[0] = data[63:32];
-	end else begin
-		memdata[1] = data[63:32];
-	end
-
+	
 assign outIns = ins;
 
-decoder d(
-	.clk(clk),
+decode d (
+	.clk(clk)
 	.outIns(outIns)
 );
-    
+
 endmodule
+
