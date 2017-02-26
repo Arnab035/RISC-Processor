@@ -23,11 +23,9 @@ module top
   input  [BUS_TAG_WIDTH-1:0] bus_resptag
 );
 
-  logic [63:0] pc;
-  logic [31:0] ir, x;
-  logic fetch_en = 0;
-  logic[31:0] count = 1'd1;
-  
+  logic [63:0] pc, ir, naddr;
+  logic [5:0] count, count_next;
+  logic fetch_en;
   
   enum {state_init = 2'b00, 
 		state_bus_request_sent = 2'b01, 
@@ -59,11 +57,13 @@ module top
 			begin
 				if(bus_respcyc) begin
 					fetch_en = 1;
-					next_state = state_receive_bus_data ;
 					count_next = count + 1;
+					next_state = state_receive_bus_data ;
+					naddr = pc + 8;
 				end else begin
 					next_state = state_init ;
 					fetch_en = 0;
+					count_next = 0;
 				end
 			end
 	endcase
@@ -73,21 +73,11 @@ module top
     if (reset) begin
       pc <= entry;
 	  state <= state_init;
-	  
-    end else begin
+	end else begin
 	  state <= next_state;
-	  
-	  if(state != next_state && next_state == state_stop_bus_request) begin
-		bus_req <= 0;
-		bus_reqtag <= 0;
-		bus_reqcyc <= 0;
-		bus_respack <= 0;
-		pc <= pc + 64;
-	  end
-	  
 	end
 	
-	// always ff output logic //
+  // always ff output logic //
   always_ff @ (posedge clk)
 	case(state)
 		state_init:
@@ -104,9 +94,17 @@ module top
 				bus_reqcyc <= 1;
 				bus_respack <= 0;
 			end
+		state_stop_bus_request:
+			begin
+				bus_req <= 0;
+				bus_reqtag <= 0;
+				bus_reqcyc <= 0;
+				bus_respack <= 0;
+			end
 		state_receive_bus_data:
 			begin
-				count <= count_next; //keeps count of number of instructions
+				count <= count_next;
+				pc <= naddr;
 				bus_req <= 0;
 				bus_reqtag <= 0;
 				bus_reqcyc <= 0;
@@ -117,20 +115,16 @@ module top
 			end
 	endcase
 	assign ir = bus_resp;
-	
-	
+  
   initial begin
     $display("Initializing top, entry point = 0x%x", entry);
   end
   
-  
-  fetcher d (
-    .clk (clk),
-    .fetch_en (fetch_en),
-    .data(ir),
+  fetcher f (
+	.clk(clk),
+	.fetch_en(fetch_en),
+	.data(ir),
 	.count(count)
-  ); 
-  
-
+  );
  
-endmodule
+ endmodule
