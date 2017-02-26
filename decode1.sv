@@ -9,13 +9,20 @@ module decode1
 (
 	input clk,
 	input [31:0] outIns,
-	output [5:0] alu_control,
-	output [4:0] addressA,
-	output [4:0] addressB,
-	output [4:0] addressC,
-	output [BUS_DATA_WIDTH-1:0] imm,
-	output logic muxB_control
+	output [5:0] out_alu_control,
+	output [4:0] out_addressA,
+	output [4:0] out_addressB,
+	output [4:0] out_addressC,
+	output [BUS_DATA_WIDTH-1:0] out_imm,
+	output logic out_muxB_control
 );
+
+reg [4:0] addressA, addressB, addressC;
+
+reg [BUS_DATA_WIDTH-1:0] imm;
+logic muxB_control = 0;
+
+reg [5:0] alu_control;
 
 always @ (posedge clk) 
 	case(outIns[6:0])
@@ -258,5 +265,21 @@ always @ (posedge clk)
 		default:
 			alu_control <= 0;
 	endcase
+	
+assign out_alu_control = alu_control;
+assign out_addressA = addressA;
+assign out_addressB = addressB;
+assign out_addressC = addressC;
+assign out_imm = imm;
+assign out_muxB_control = muxB_control;
+
+registerFile regFil (
+	.alu_control(out_alu_control),
+	.addressA(out_addressA),
+	.addressB(out_addressB),
+	.addressC(out_addressC),
+	.muxB_control(out_muxB_control),
+	.imm(out_imm)
+);
  
  endmodule
