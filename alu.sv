@@ -1,11 +1,12 @@
 
-`include "sysbus.defs"
+`include "Sysbus.defs"
 
 module alu 
 #(
 	BUS_DATA_WIDTH = 64
 )
 (
+	input clk,
 	input [BUS_DATA_WIDTH-1 : 0] dataA,
 	input [BUS_DATA_WIDTH-1 : 0] dataB,  // could be immediate or register
 	input [5:0] alu_control,  // for 41 ALU ops, 6 bits
@@ -117,6 +118,8 @@ always @ (posedge clk) begin
 			val[31:0] <= $signed(dataA[31:0]) % $signed(dataB[31:0]);
 		6'b101011: // remuw
 			val[31:0] <= dataA[31:0] % dataB[31:0] ;
+		default:
+			val[31:0] <= 0;
 	endcase
 end
 
@@ -127,7 +130,7 @@ always_comb begin
 			dataOut = x;
 		end
 		else if(alu_control >= 6'b100000 && alu_control <= 6'b100010) begin
-			x = {32{0}, val[63:32]};
+			x = val[63:32];
 			dataOut = x;
 		end
 	end
@@ -138,9 +141,7 @@ end
 
 // instantiate writeback stage here
 
-writeback wb (
-	.dataIn(dataOut)
-);
+endmodule
 		
 		
  			

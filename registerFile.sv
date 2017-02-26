@@ -39,7 +39,11 @@ always @ (posedge clk)
 		mem[addressC] <= writeBack ;
 	end else begin
 		rA <= mem[addressA];
-		rB <= mem[addressB];
+		if(muxB_control) begin // imm
+			rB <= imm;
+		end else begin
+			rB <= mem[addressB];
+		end
 	end
 
 
@@ -47,6 +51,13 @@ assign dataA = rA;
 assign dataB = rB;
 
 // define alu module here
+ 
+ alu a (
+	.clk(clk),
+	.dataA(dataA),
+	.dataB(dataB),
+	.alu_control(alu_control)
+);
  
  
 endmodule
