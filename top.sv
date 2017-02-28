@@ -13,6 +13,7 @@ module top
   input  [63:0] entry,
   
   // interface to connect to the bus
+  output end_of_cycle,
   output bus_reqcyc,
   output bus_respack,
   output [BUS_DATA_WIDTH-1:0] bus_req,
@@ -30,45 +31,43 @@ module top
   enum {state_init = 2'b00, 
 		state_bus_request_sent = 2'b01, 
 		state_stop_bus_request = 2'b10, 
-		state_receive_bus_data = 2'b11} state, next_state;
+		state_receive_bus_data = 2'b11, state_dummy} state, next_state;
 	
   // next-state logic //
   always_comb begin
     case(state)	
 		state_init:
 			if(!reset) begin
-				next_state = state_bus_request_sent ;
+				next_state = state_bus_request_sent;
 			end else begin
-				next_state = state_init ;
+				next_state = state_init;
 			end
 		state_bus_request_sent:
 			if(bus_reqack) begin
-				next_state = state_stop_bus_request ;
+				next_state = state_stop_bus_request;
 			end else begin
-				next_state = state_bus_request_sent ;
+				next_state = state_bus_request_sent;
 			end
 		state_stop_bus_request:
 			if(bus_respcyc) begin
-				next_state = state_receive_bus_data ;
+				next_state = state_receive_bus_data;
 			end else begin
-				next_state = state_stop_bus_request ;
+				next_state = state_stop_bus_request;
+			end
+		state_dummy:
+			begin
+				next_state = state_receive_bus_data;
+				naddr = pc + 8;
 			end
 		state_receive_bus_data:
-			begin
-				if(bus_respcyc) begin
-					fetch_en = 1;
-					count_next = count + 1;
-					next_state = state_receive_bus_data ;
-					naddr = pc + 8;
-				end else begin
-					next_state = state_init ;
-					fetch_en = 0;
-					count_next = 0;
-				end
+			if(bus_respcyc) begin
+				next_state = state_dummy;
+			end else begin
+				next_state = state_init;
 			end
 	endcase
   end
-
+  
   always @ (posedge clk)
     if (reset) begin
       pc <= entry;
@@ -86,6 +85,7 @@ module top
 				bus_reqtag <= 0;
 				bus_respack <= 0;
 				bus_reqcyc <= 0;
+				fetch_en <= 0;
 			end
 		state_bus_request_sent:
 			begin
@@ -101,20 +101,31 @@ module top
 				bus_reqcyc <= 0;
 				bus_respack <= 0;
 			end
+		state_dummy:
+			begin
+				bus_req <= 0;
+				bus_reqtag <= 0;
+				bus_reqcyc <= 0;
+				bus_respack <= 0;
+				fetch_en <= 1;
+			end
 		state_receive_bus_data:
 			begin
 				count <= count_next;
+				fetch_en <= 1;
 				pc <= naddr;
 				bus_req <= 0;
 				bus_reqtag <= 0;
 				bus_reqcyc <= 0;
 				bus_respack <= 1;
+				ir <= bus_resp;
 				if(bus_resp == 0) begin
-					$finish;
+					//$finish;
+					end_of_cycle <= 1;
 				end
 			end
 	endcase
-	assign ir = bus_resp;
+	
   
   initial begin
     $display("Initializing top, entry point = 0x%x", entry);
@@ -124,7 +135,10 @@ module top
 	.clk(clk),
 	.fetch_en(fetch_en),
 	.data(ir),
-	.count(count)
+	.count(count),
+	.end_of_cycle(end_of_cycle)
   );
+  
+  
  
  endmodule
