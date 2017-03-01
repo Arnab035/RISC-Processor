@@ -9,7 +9,7 @@ module decode1
 (
 	input clk,
 	input [31:0] outIns,
-	input fetch_en,
+	input decode_en,
 	input end_of_cycle,
 	
 	output [5:0] out_alu_control,
@@ -17,19 +17,20 @@ module decode1
 	output [4:0] out_addressB,
 	output [4:0] out_addressC,
 	output [BUS_DATA_WIDTH-1:0] out_imm,
-	output logic out_muxB_control
+	output logic out_muxB_control,
+	output reg_file_en
 );
 
 reg [4:0] addressA, addressB, addressC;
 
 reg [BUS_DATA_WIDTH-1:0] imm;
 logic muxB_control = 0;
+logic out_reg_file_en;
 
 reg [5:0] alu_control;
 
 always @ (posedge clk) 
-  if(!end_of_cycle) begin
-	if(fetch_en) begin
+	if(decode_en) begin
 		case(outIns[6:0])
 			7'b0010011:
 				begin
@@ -277,8 +278,12 @@ always @ (posedge clk)
 					imm <= 0;
 				end
 		endcase
+		out_reg_file_en <= 1;
 	end
-  end
+	else begin
+		out_reg_file_en <= 0;
+	end
+  
 	
 assign out_alu_control = alu_control;
 assign out_addressA = addressA;
@@ -286,5 +291,6 @@ assign out_addressB = addressB;
 assign out_addressC = addressC;
 assign out_imm = imm;
 assign out_muxB_control = muxB_control;
+assign reg_file_en = out_reg_file_en;
 
 endmodule

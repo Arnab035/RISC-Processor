@@ -1,14 +1,5 @@
 `include "Sysbus.defs"
 
-
-/* register file module */
-
-/* inputs and outputs for register file 
-1. 3 address inputs and
-2. 1 data input 
-2.a) 1 immediate input
-3. 2 data outputs */
-
 module registerFile
 #(
 	BUS_DATA_WIDTH = 64
@@ -16,7 +7,7 @@ module registerFile
 (   
 	input clk,
 	input end_of_cycle,
-	input fetch_en,
+	input reg_file_en,
 	input [5:0] alu_control,   // which alu operation to perform
 	input muxB_control, // multiplexer selects immediate or register
     input write_en,  // ALU SETS THE WRITE-EN LOGIC
@@ -29,23 +20,26 @@ module registerFile
 	
 	output [BUS_DATA_WIDTH-1 : 0] dataA, /* go to the ALU */
 	output [BUS_DATA_WIDTH-1 : 0] dataB,
-	output [5:0] out_alu_control
+	output [5:0] out_alu_control,
+	output out_alu_en
 );
 
 reg [BUS_DATA_WIDTH-1 : 0] rA, rB;
 
 reg [5:0] _alu_control;
+logic alu_en;
 
 reg [BUS_DATA_WIDTH-1 : 0] mem[31:0]; 
 // 32 * 64 register file
 
 assign mem[0] = 0;
 
-always @ (posedge clk) 
-    if(fetch_en) begin
+always @ (posedge clk) begin
+	
+    if(reg_file_en) begin
+		$display("%x,%x", addressA, imm);
 		_alu_control <= alu_control;
 		if(write_en) begin
-			$display(writeBack);
 			mem[addressC] <= writeBack ;
 		end
 		rA <= mem[addressA];
@@ -54,10 +48,17 @@ always @ (posedge clk)
 		end else begin
 			rB <= mem[addressB];
 		end
+		alu_en <= 1;
+	end else begin
+		alu_en <= 0;
+		if(write_en) begin
+			mem[addressC] <= writeBack ;
+		end
 	end
-  
-  
- always @ (posedge clk) 
+end
+ 
+
+always @ (posedge clk) 
 	if(call_for_print) begin
 		print_registers();
 	end
@@ -65,11 +66,12 @@ always @ (posedge clk)
 assign dataA = rA;
 assign dataB = rB;
 assign out_alu_control = _alu_control;
+assign out_alu_en = alu_en;
 
 function void print_registers;
     int i;
 	for(i = 0; i < 32; i++) begin
-		$display("Reg %x: %x ", i+1, mem[i]);
+		$display("Register\t%d: %x ", i+1, mem[i]);
 	end
 	$finish;
 endfunction

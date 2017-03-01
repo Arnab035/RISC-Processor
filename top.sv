@@ -28,6 +28,8 @@ module top
   logic [5:0] count, count_next;
   logic fetch_en;
   
+  wire in_read_en, in_address, out_instr;
+  
   enum {state_init = 2'b00, 
 		state_bus_request_sent = 2'b01, 
 		state_stop_bus_request = 2'b10, 
@@ -130,6 +132,7 @@ module top
   initial begin
     $display("Initializing top, entry point = 0x%x", entry);
   end
+  
   
   fetcher f (
 	.clk(clk),

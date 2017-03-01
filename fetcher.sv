@@ -2,7 +2,7 @@
 `include "decode1.sv"
 `include "registerFile.sv"
 `include "alu.sv"
-`include "writeback.sv"
+
 
 module fetcher
 #(
@@ -33,11 +33,12 @@ wire [BUS_DATA_WIDTH-1 : 0] dataA;
 wire [BUS_DATA_WIDTH-1 : 0] dataB;
 wire [BUS_DATA_WIDTH-1 : 0] dataOut;
 wire [BUS_DATA_WIDTH-1 : 0] writeBack;
-wire call_for_print;
+wire call_for_print, out_decode_en, out_reg_file_en, out_alu_en, out_writeBack_en;
 
-always @ (posedge clk) 
+logic r_decode_en;
+
+always @ (posedge clk)
 	if(fetch_en) begin
-		$display(data);
 		if(low) begin
 				ins <= data[31:0];
 				low <= 0;
@@ -45,63 +46,60 @@ always @ (posedge clk)
 				ins <= data[63:32];
 				low <= 1;
 			end
+		r_decode_en <= 1;
+	end
+	else begin
+		r_decode_en <= 0;
 	end
 	
-
+assign out_decode_en = r_decode_en;
 	
 assign outIns = ins;
 
 decode1 d (
 	.clk(clk),
 	.end_of_cycle(end_of_cycle),
-	.fetch_en(fetch_en),
+	.decode_en(out_decode_en),
 	.outIns(outIns),
 	.out_alu_control(out_alu_control),
 	.out_addressA(out_addressA),
 	.out_addressB(out_addressB),
 	.out_addressC(out_addressC),
 	.out_imm(out_imm),
-	.out_muxB_control(out_muxB_control)
+	.out_muxB_control(out_muxB_control),
+	.reg_file_en(out_reg_file_en)
 );
 
 registerFile rf (
 	.clk(clk),
 	.end_of_cycle(end_of_cycle),
-	.fetch_en(fetch_en),
+	.reg_file_en(out_reg_file_en),
 	.alu_control(out_alu_control),
 	.muxB_control(out_muxB_control),
 	.write_en(write_en),
 	.call_for_print(call_for_print),
 	.addressA(out_addressA),
 	.addressB(out_addressB),
-	.writeBack(writeBack),
+	.writeBack(dataOut),
 	.addressC(out_addressC),
 	.imm(out_imm),
 	.dataA(dataA),
 	.dataB(dataB),
-	.out_alu_control(out1_alu_control)
+	.out_alu_control(out1_alu_control),
+	.out_alu_en(out_alu_en)
 );
 
 alu al (
 	.clk(clk),
 	.end_of_cycle(end_of_cycle),
-	.fetch_en(fetch_en),
+	.alu_en(out_alu_en),
 	.dataA(dataA),
 	.dataB(dataB),
 	.alu_control(out1_alu_control),
 	.dataOut(dataOut),
-	._aluOps(aluOps)
-);
-
-writeback wb (
-	.clk(clk),
-	.end_of_cycle(end_of_cycle),
-	.fetch_en(fetch_en),
-	.dataOut(dataOut),
-	.y(writeBack),
-	.out_write_en(write_en),
 	._aluOps(aluOps),
-	.call_for_print(call_for_print)
+	.send_call_for_print(call_for_print),
+	.write_en(write_en)
 );
 
 endmodule
