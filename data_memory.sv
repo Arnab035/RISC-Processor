@@ -19,12 +19,15 @@ module data_memory
 	input memWrite,
 	
 	// other control signals to be defined for branch
+	input inBranch,
+	input inZeroSignal,  // this comes from the ALU, it is set when the alu operation is 0.
 	
 	output [BUS_DATA_WIDTH-1:0] readData,
 	output [5:0] outWriteRegister,
 	output [BUS_DATA_WIDTH-1:0] outAluData,
 	output outMemOrReg,
-	output outRegWrite
+	output outRegWrite,
+	output pcSrc   // indicates the source of the next program counter
 );
 
 reg [BUS_DATA_WIDTH-1:0] data_mem[2^(BUS_DATA_WIDTH) - 1 :0]; 
@@ -47,13 +50,13 @@ always @ (posedge clk) begin
 	_regWrite <= inRegWrite;
 end
 
+assign pcSrc = inBranch & inZeroSignal;  
 
 assign readData = outReadData;
 assign outAluData = aluData;
 assign outWriteRegister = writeRegister;
 assign outMemOrReg = _memOrReg;
 assign outWriteReg = _regWrite;
-
 
 endmodule
 
