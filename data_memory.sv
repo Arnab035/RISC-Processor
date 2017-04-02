@@ -8,12 +8,14 @@ module data_memory
 	BUS_DATA_WIDTH = 64
 )
 (
+	input clk,
+	input inRegWrite,				// control to write data into reg file
 	input [5:0] inWriteRegister,   // which register number to be written
 	
-	input [BUS_DATA_WIDTH-1:0] addressOrAluData,
+	input [BUS_DATA_WIDTH-1:0] addressOrAluData,    // either it is an address or alu data
 	input [BUS_DATA_WIDTH-1:0] writeData,
 	input inMemOrReg,        // if memorreg is 0, read data from memory
-	input memRead,
+	input memRead,            // depends on the instruction
 	input memWrite,
 	
 	// other control signals to be defined for branch
@@ -21,7 +23,8 @@ module data_memory
 	output [BUS_DATA_WIDTH-1:0] readData,
 	output [5:0] outWriteRegister,
 	output [BUS_DATA_WIDTH-1:0] outAluData,
-	output outMemOrReg
+	output outMemOrReg,
+	output outRegWrite
 );
 
 reg [BUS_DATA_WIDTH-1:0] data_mem[2^(BUS_DATA_WIDTH) - 1 :0]; 
@@ -29,7 +32,7 @@ reg [BUS_DATA_WIDTH-1:0] aluData;
 reg [BUS_DATA_WIDTH-1:0] outReadData;
 reg [5:0] writeRegister;
 
-logic _memOrReg;
+logic _memOrReg, _regWrite;
 
 always @ (posedge clk) begin
 	if(memRead && !inMemOrReg) begin
@@ -41,6 +44,7 @@ always @ (posedge clk) begin
 	end
 	writeRegister <= inWriteRegister;
 	_memOrReg <= inMemOrReg;
+	_regWrite <= inRegWrite;
 end
 
 
@@ -48,6 +52,8 @@ assign readData = outReadData;
 assign outAluData = aluData;
 assign outWriteRegister = writeRegister;
 assign outMemOrReg = _memOrReg;
+assign outWriteReg = _regWrite;
+
 
 endmodule
 
