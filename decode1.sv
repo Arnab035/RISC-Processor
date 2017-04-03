@@ -23,6 +23,9 @@ module decode1
 	output outMemWrite,
 	output outRegWrite,       // whether writeback to be done
 	output outMemOrReg,       // whether memory or register value to be written back
+	output [2:0] outLoadType;    // loads, stores and branches differ  
+	output [1:0] outStoreType;
+	output [1:0] outBranchType;  
 	
 	output [5:0] outAluControl,   // which ALU operation to perform
 	output [BUS_DATA_WIDTH-1:0] outReadData1,  // read data from register 1
@@ -42,9 +45,10 @@ logic aluSrc = 0;
 logic out_reg_file_en;
 reg [BUS_DATA_WIDTH-1:0] _pc;
 
+reg [1:0] branchType, storeType;
 logic pcSrc, regWrite;
 
-logic memWrite, memRead, branch;
+logic memWrite, memRead, branch, memOrReg;
 
 reg [5:0] aluControl;
 
@@ -62,7 +66,11 @@ always @ (posedge clk)
 					readData2 <= 0;
 					destRegister <= outIns[11:7];
 					regWrite <= 1;
+					branch <= 0;
+					memRead <= 0;
+					memWrite <= 0;
 					imm <= {{52{outIns[31]}} , outIns[31:20]};  // sign-extended immediate sent
+					memOrReg <= 0;  // value from alu
 					case(outIns[14:12])
 						/*
 						3'b000:
@@ -113,6 +121,8 @@ always @ (posedge clk)
 			7'b0100011:
 				memWrite <= 1;
 				regWrite <= 0;
+				branch <= 0;
+				memOrReg <= 0;  // not important
 				case(ir[14:12]) 
 					3'b000: 
 						// sb
@@ -138,6 +148,10 @@ always @ (posedge clk)
 					readData2 <= mem[outIns[24:20]];
 					destRegister <= outIns[11:7];
 					imm <= 0;
+					branch <= 0;
+					memRead <= 0;
+					memWrite <= 0;
+					memOrReg <= 0;
 					case(outIns[14:12])
 						3'b000:
 							if(outIns[31:25] == 7'b0000000) begin
@@ -243,6 +257,10 @@ always @ (posedge clk)
 					destRegister <= outIns[11:7];
 					imm <= 0;
 					regWrite <= 1;
+					branch <= 0;
+					memRead <= 0;
+					memWrite <= 0;
+					memOrReg <= 0;
 					case(outIns[14:12])
 						3'b000:
 							if(outIns[31:25] == 7'b0000000) begin
@@ -298,6 +316,10 @@ always @ (posedge clk)
 					destRegister <= outIns[11:7]; 
 					imm <= {{52{outIns[31]}} , outIns[31:20]}; // sign-extended immediate
 					regWrite <= 1;
+					branch <= 0;
+					memRead <= 0;
+					memWrite <= 0;
+					memOrReg <= 0;
 					case(outIns[14:12])
 						3'b000:
 							aluControl <= 6'b010110;
@@ -328,24 +350,32 @@ always @ (posedge clk)
 						readData1 <= mem[outIns[19:15]];
 						readData2 <= mem[outIns[24:20]];
 						regWrite <= 0;
+						memRead <= 0;
+						memWrite <= 0;
+						memOrReg <= 0;  // not important
 						case(ir[14:12])
 							3'b000: 
+								branchType <= 2'b01;
 								if(outIns[24:20] == 5'd0) begin
 									// beqz
+									
 									aluControl <= 6'b001101;   // subtract
 								end else begin
 									// beq
+									branchType <= 3'b010;
 									aluControl <= 6'b001101;
 								end
 							3'b001:	
+								branchType <= 2'b10;
 								if(ir[24:20] == 5'd0) begin
 									// bnez
 									aluControl <= 6'b001101;
-									
 								end else begin
+									
 									aluControl <= 6'b001101;
 								end
 							3'b100: 
+								branchType <= 2'b11;
 								if(ir[24:20] == 5'd0) begin
 									aluControl <= 6'b001101;  // subtract suffices
 								end else begin
@@ -366,6 +396,38 @@ always @ (posedge clk)
 								aluControl <= 0;
 						endcase
 					end
+			// load instructions
+			7'b0000011:
+					branch <= 0;
+					memRead <= 1;
+					memWrite <= 0;
+					aluSrc <= 1; 
+					memOrReg <= 1; // go from memory
+					readData1 <= mem[outIns[19:15]];
+					destReg <= outIns[11:7];
+					imm <= {{52{outIns[31]}} , outIns[31:20]};
+					readData2 <= 0;
+					
+					case(ir[14:12])
+						/*
+						3'b000:
+							$display("  %0h:\t%h\tlb\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b001:
+							$display("  %0h:\t%h\tlh\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b010: 
+							$display("  %0h:\t%h\tlw\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b100: 
+							$display("  %0h:\t%h\tlbu\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b101:	
+							$display("  %0h:\t%h\tlhu\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b110:
+							$display("  %0h:\t%h\tlwu\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						3'b011: 
+						    $display("  %0h:\t%h\tld\t%s,%0d(%s)", pc, ir[31:0], register_file[ir[11:7]], $signed(ir[31:20]), register_file[ir[19:15]]) ;
+						default:
+							$display("wrong opcode format");
+						*/
+					endcase
 			default:
 				begin
 					alu_control <= 0;
