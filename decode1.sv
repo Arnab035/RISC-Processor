@@ -3,13 +3,13 @@
 
 `include "Sysbus.defs"
 
-module decode1
+module instructiondecode
 # (
 	BUS_DATA_WIDTH = 64
 )
 (
 	input clk,
-	input [BUS_DATA_WIDTH-1 : 0] pc,
+	input [BUS_DATA_WIDTH-1 : 0] pc,  // pc must go to execute stage
 	input [31:0] outIns,
 	input decode_en, 
 	input inRegWrite,  // regWrite input as well
@@ -23,9 +23,6 @@ module decode1
 	output outMemWrite,
 	output outRegWrite,       // whether writeback to be done
 	output outMemOrReg,       // whether memory or register value to be written back
-	output [2:0] outLoadType;    // loads, stores and branches differ  
-	output [1:0] outStoreType;
-	output [1:0] outBranchType;  
 	
 	output [5:0] outAluControl,   // which ALU operation to perform
 	output [BUS_DATA_WIDTH-1:0] outReadData1,  // read data from register 1
@@ -38,14 +35,14 @@ reg [BUS_DATA_WIDTH-1 : 0] mem[31:0];   // register file definition
 
 reg [BUS_DATA-WIDTH-1 : 0] readData1, readData2;
 
+// separate branches,loads,stores based on type -- here
+
 reg [4:0] destRegister;
 
 reg [BUS_DATA_WIDTH-1:0] imm;
 logic aluSrc = 0;
-logic out_reg_file_en;
 reg [BUS_DATA_WIDTH-1:0] _pc;
 
-reg [1:0] branchType, storeType;
 logic pcSrc, regWrite;
 
 logic memWrite, memRead, branch, memOrReg;
@@ -87,7 +84,7 @@ always @ (posedge clk)
 						*/
 						3'b010:
 							aluControl <= 6'b000010;   // slti
-						3'b011:q
+						3'b011:
 							if(outIns[31:20] == 11'd1) begin //seqz
 								aluControl <= 6'b000011;
 							end else begin     //sltiu
@@ -371,7 +368,6 @@ always @ (posedge clk)
 									// bnez
 									aluControl <= 6'b001101;
 								end else begin
-									
 									aluControl <= 6'b001101;
 								end
 							3'b100: 
@@ -407,7 +403,6 @@ always @ (posedge clk)
 					destReg <= outIns[11:7];
 					imm <= {{52{outIns[31]}} , outIns[31:20]};
 					readData2 <= 0;
-					
 					case(ir[14:12])
 						/*
 						3'b000:
@@ -430,18 +425,12 @@ always @ (posedge clk)
 					endcase
 			default:
 				begin
-					alu_control <= 0;
-					addressA <= 0;
-					addressB <= 0;
-					addressC <= 0;
-					muxB_control <= 0;
-					imm <= 0;
+					aluControl <= 0;
 				end
 		endcase
-		out_reg_file_en <= 1;
 	end
 	else begin
-		out_reg_file_en <= 0;
+		aluControl <= 0;
 	end
   
 
@@ -450,9 +439,15 @@ assign outPc = _pc;
 assign outAluControl = aluControl;
 assign outReadData1 = readData1;
 assign outReadData2 = readData2;
-assign out_addressC = addressC;
-assign out_imm = imm;
-assign out_muxB_control = muxB_control;
-assign reg_file_en = out_reg_file_en;
+assign outMemOrReg = memOrReg;
+assign outBranch = branch;
+assign outAluSrc = aluSrc;
+assign outPCSrc = pcSrc;
+assign outMemRead = memRead;
+assign outMemWrite = memWrite;  
+
+assign outRegWrite = regWrite;
+
+assign outImm = imm;
 
 endmodule

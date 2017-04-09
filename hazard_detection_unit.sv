@@ -8,9 +8,9 @@ module hazard_detection_unit
 (
 	input inMemReadIdEx, // memread signal from id/ex, tells you if it is a load
 	
+	// since this module will be used inside instruction decoder, you can pass the instruction directly as input
 	input inRegisterRtIdEx,
-	input inRegisterRsIfId,
-	input inRegisterRtIfId,
+	input [31:0] outIns,
 	
 	output outPCWrite,  // signal to tell PC not to increment
 	output outIfIdWrite,  // do not write to the if/id register
@@ -18,7 +18,7 @@ module hazard_detection_unit
 )
 
 always_comb begin
-	if(inMemReadIdEx && ((inRegisterRtIdEx == inRegisterRsIfId) || (inRegisterRtIdEx == inRegisterRtIfId))) begin
+	if(inMemReadIdEx && ((inRegisterRtIdEx == outIns[19:15]) || (inRegisterRtIdEx == outIns[24:20]))) begin
 		//stall pipeline
 		outPCWrite = 0;
 		outIfIdWrite = 0;
