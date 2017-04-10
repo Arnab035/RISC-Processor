@@ -3,7 +3,7 @@
 
 `include "Sysbus.defs"
 
-module instructiondecode
+module decode1
 # (
 	BUS_DATA_WIDTH = 64
 )
@@ -15,9 +15,9 @@ module instructiondecode
 	input inRegWrite,  // regWrite input as well
 	input end_of_cycle,
 	
-	// output all the important signals from here-- 8 signals in total
+	// output all the important signals from here-- 7 signals in total
 	output outBranch,
-	output outAluSrc,      // either read from reg2 or sign-extended mem address
+	// aluSrc is not needed since we have aluControl to differentiate between all kinds of alu functions
 	output outPCSrc,
 	output outMemRead,
 	output outMemWrite,
@@ -29,6 +29,10 @@ module instructiondecode
 	output [BUS_DATA_WIDTH-1:0] outReadData2,  // read data from register 2
 	output [4:0] outDestRegister,
 	output [BUS_DATA_WIDTH-1:0] outImm,           // sign-extended imm
+	
+	// you have to pass in the register numbers as output to forwarding unit in the id/ex stage
+	output [4:0] outRegisterRs,  // first source register
+	output [4:0] outRegisterRt	 // second source register
 );
 
 reg [BUS_DATA_WIDTH-1 : 0] mem[31:0];   // register file definition
@@ -38,9 +42,10 @@ reg [BUS_DATA-WIDTH-1 : 0] readData1, readData2;
 // separate branches,loads,stores based on type -- here
 
 reg [4:0] destRegister;
+reg [4:0] registerRs;
+reg [4:0] registerRt;
 
 reg [BUS_DATA_WIDTH-1:0] imm;
-logic aluSrc = 0;
 reg [BUS_DATA_WIDTH-1:0] _pc;
 
 logic pcSrc, regWrite;
@@ -58,7 +63,6 @@ always @ (posedge clk)
 		case(outIns[6:0])           
 			7'b0010011:
 				begin
-					aluSrc <= 1; // immediate
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= 0;
 					destRegister <= outIns[11:7];
@@ -68,6 +72,8 @@ always @ (posedge clk)
 					memWrite <= 0;
 					imm <= {{52{outIns[31]}} , outIns[31:20]};  // sign-extended immediate sent
 					memOrReg <= 0;  // value from alu
+					registerRs <= outIns[19:15];
+					registerRt <= 0;   // immediate
 					case(outIns[14:12])
 						/*
 						3'b000:
@@ -139,7 +145,6 @@ always @ (posedge clk)
 			// add-sub instruction types
 			7'b0110011:
 				begin
-					aluSrc <= 0;   // 0 means it comes from register
 					regWrite <= 1;
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= mem[outIns[24:20]];
@@ -149,6 +154,8 @@ always @ (posedge clk)
 					memRead <= 0;
 					memWrite <= 0;
 					memOrReg <= 0;
+					registerRs <= outIns[19:15];
+					registerRt <= outIns[24:20];
 					case(outIns[14:12])
 						3'b000:
 							if(outIns[31:25] == 7'b0000000) begin
@@ -248,7 +255,6 @@ always @ (posedge clk)
 				end
 			7'b0111011:
 				begin
-					aluSrc <= 0;        // non-immediate
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= mem[outIns[24:20]];
 					destRegister <= outIns[11:7];
@@ -258,6 +264,8 @@ always @ (posedge clk)
 					memRead <= 0;
 					memWrite <= 0;
 					memOrReg <= 0;
+					registerRs <= outIns[19:15];
+					registerRt <= outIns[24:20];
 					case(outIns[14:12])
 						3'b000:
 							if(outIns[31:25] == 7'b0000000) begin
@@ -307,7 +315,6 @@ always @ (posedge clk)
 				end
 			7'b0011011:
 				begin
-					aluSrc <= 1;
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= 0;
 					destRegister <= outIns[11:7]; 
@@ -317,6 +324,8 @@ always @ (posedge clk)
 					memRead <= 0;
 					memWrite <= 0;
 					memOrReg <= 0;
+					registerRs <= outIns[19:15];
+					registerRt <= outIns[24:20];
 					case(outIns[14:12])
 						3'b000:
 							aluControl <= 6'b010110;
@@ -343,13 +352,14 @@ always @ (posedge clk)
 					begin
 						imm <= {{51{outIns[31]}}, outIns[7], outIns[30:25], outIns[11:8], 0};
 						branch <= 1;
-						aluSrc <= 0;
 						readData1 <= mem[outIns[19:15]];
 						readData2 <= mem[outIns[24:20]];
 						regWrite <= 0;
 						memRead <= 0;
 						memWrite <= 0;
 						memOrReg <= 0;  // not important
+						registerRs <= 0;
+						registerRt <= 0;
 						case(ir[14:12])
 							3'b000: 
 								branchType <= 2'b01;
@@ -397,12 +407,13 @@ always @ (posedge clk)
 					branch <= 0;
 					memRead <= 1;
 					memWrite <= 0;
-					aluSrc <= 1; 
 					memOrReg <= 1; // go from memory
 					readData1 <= mem[outIns[19:15]];
 					destReg <= outIns[11:7];
 					imm <= {{52{outIns[31]}} , outIns[31:20]};
 					readData2 <= 0;
+					registerRs <= outIns[19:15];
+					registerRt <= 0;
 					case(ir[14:12])
 						/*
 						3'b000:
@@ -441,10 +452,12 @@ assign outReadData1 = readData1;
 assign outReadData2 = readData2;
 assign outMemOrReg = memOrReg;
 assign outBranch = branch;
-assign outAluSrc = aluSrc;
 assign outPCSrc = pcSrc;
 assign outMemRead = memRead;
-assign outMemWrite = memWrite;  
+assign outMemWrite = memWrite;
+assign outDestReg = destReg;
+assign outRegisterRs = registerRs;
+assign outRegisterRt = registerRt;  
 
 assign outRegWrite = regWrite;
 
