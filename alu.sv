@@ -20,6 +20,7 @@ module alu
 	input inPCSrc,
 	input inRegWrite,
 	input [BUS_DATA_WIDTH-1 : 0] inImm,  // immediate value
+	input [4:0] inDestReg;
 	
 	// inputs from forwarding unit, as well as pipeline registers 
 	input [BUS_DATA_WIDTH-1 : 0] inExResult,
@@ -48,6 +49,8 @@ module alu
 logic branch, memRead, memWrite, memOrReg, pcSrc, regWrite;
 
 reg [BUS_DATA_WIDTH-1 : 0] val;
+
+logic [4:0] destReg;
 
 always_comb begin
 	// inputs from forwarding unit module
@@ -91,6 +94,7 @@ always @ (posedge clk)
 	pcSrc <= inPcSrc;
 	regWrite <= inRegWrite;
 	
+	destReg <= inDestReg;
 	case(inAluControl)
 		6'b000001:  // addi
 			begin
@@ -259,6 +263,8 @@ assign outMemWrite = memWrite;
 assign outMemOrReg = memOrReg;
 assign outPcSrc = pcSrc;
 assign outRegWrite = regWrite;
+
+assign outDestReg = destReg;  // pass out the destination register also
 	
 /*	
 always_comb begin
