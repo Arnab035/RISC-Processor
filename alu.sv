@@ -28,10 +28,6 @@ module alu
 	input [1:0] forwardingLogicA,
 	input [1:0] forwardingLogicB,
 	
-	// final data inputs to be selected by a mux
-	input [BUS_DATA_WIDTH-1 : 0] inData1,
-	input [BUS_DATA_WIDTH-1 : 0] inData2,
-	
 	// outputs are here
 	output outBranch,
 	output outMemRead,
@@ -50,6 +46,10 @@ logic branch, memRead, memWrite, memOrReg, pcSrc, regWrite;
 reg [BUS_DATA_WIDTH-1 : 0] val;
 
 logic [4:0] destReg;
+
+
+reg [BUS_DATA_WIDTH-1 : 0] inData1;
+reg [BUS_DATA_WIDTH-1 : 0] inData2;
 
 always_comb begin
 	// inputs from forwarding unit module
@@ -70,7 +70,7 @@ always_comb begin
 	case(forwardingLogicB)
 		2'b00:
 			begin
-				inData2 = inDataReg1;
+				inData2 = inDataReg2;
 			end
 		2'b01:
 			begin
