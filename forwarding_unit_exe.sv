@@ -8,14 +8,14 @@ module forwarding_unit_exe
 	BUS_DATA_WIDTH = 64
 )
 (
-	input inRegisterRsIdEx,  // from id/ex pipeline stage
-	input inRegsiterRtIdEx,	 // from id/ex pipeline stage
+	input inRegisterRsId,  // from id/ex pipeline stage
+	input inRegsiterRtId,	 // from id/ex pipeline stage
 	
-	input inRegisterRdExMem,
-	input inRegisterRdMemWb,
+	input inRegisterRdEx,
+	input inRegisterRdMem,
 	
-	input inRegWriteExMem, // from ex/mem pipeline stage
-	input inRegWriteMemWb,	// from mem/wb pipeline stage
+	input inRegWriteEx, // from ex/mem pipeline stage
+	input inRegWriteMem,	// from mem/wb pipeline stage
 	
 	output [1:0] outforwardA, 	// these are outputs to two multiplexers that decide whether A/B is to be fwded 
 	output [1:0] outforwardB
@@ -23,24 +23,24 @@ module forwarding_unit_exe
 
 always_comb begin
 	// ex/mem hazard
-	if(inRegWriteExMem && (inRegisterRdExMem != 0) && (inRegisterRdExMem == inRegisterRsIdEx)) begin
+	if(inRegWriteEx && (inRegisterRdEx != 0) && (inRegisterRdEx == inRegisterRsId)) begin
 		outForwardA = 10;
 	end
-	else if(inRegWriteExMem && (inRegisterRdExMem != 0) && (inRegisterRdExMem == inRegisterRtIdEx)) begin
+	else if(inRegWriteEx && (inRegisterRdEx != 0) && (inRegisterRdEx == inRegisterRtId)) begin
 		outForwardB = 10;
 	end
 	// mem/wb hazard
-	else if(inRegWriteRdMemWb && (inRegisterRdMemWb != 0) && (inRegisterRdMemWb == inRegisterRsIdEx) ) begin
+	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRsId) ) begin
 		outForwardA = 01;
 	end
-	else if(inRegWriteRdMemWb && (inRegisterRdMemWb != 0) && (inRegisterRdMemWb == inRegisterRtIdEx) ) begin
+	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRtId) ) begin
 		outForwardB = 01;
 	end
 	// multiple hazards (multiple adds writing to same operand)
-	else if(inRegWriteRdMemWb && (inRegisterRdMemWb != 0) && (inRegisterRdExMem != inRegisterRsIdEx) && (inRegisterRdMemWb == inRegisterRsIdEx)) begin
+	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRsId) && (inRegisterRdMem == inRegisterRsId)) begin
 		outForwardA = 01;
 	end
-	else if(inRegWriteRdMemWb && (inRegisterRdMemWb != 0) && (inRegisterRdExMem != inRegisterRtIdEx) && (inRegisterRdMemWb == inRegisterRtIdEx)) begin
+	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRtId) && (inRegisterRdMem == inRegisterRtId)) begin
 		outForwardB = 01;
 	end
 	else begin

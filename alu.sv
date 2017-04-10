@@ -42,7 +42,6 @@ module alu
 	output outZero,       // this is a zero indicator to be used when we perform branches
 	
 	output [BUS_DATA_WIDTH-1 : 0] outResult,
-	output outBranchTarget,
 	output send_call_for_print  // not sure of this yet..
 );
 
@@ -246,15 +245,15 @@ always @ (posedge clk)
 always_comb 
 	if(inAluControl > 6'b010101) begin
 		if(inAluControl < 6'b011111 || inAluControl >= 6'b100111) begin
-			dataOut = {{32{val[31]}}, val[31:0]};
+			outResult = {{32{val[31]}}, val[31:0]};
 		end
 		else if(inAluControl >= 6'b100000 && inAluControl = 6'b100010) begin
-			dataOut[31:0] = val[63:32];
+			outResult[31:0] = val[63:32];
 		end
 	else if(inAluControl == 6'b001101 && val == 0) begin
-		outZero = 1;
+		outZero = 1;  // this is the zero output
 	end else begin
-		dataOut = val;
+		outResult = val;
 	end
 
 assign outBranch = branch;
