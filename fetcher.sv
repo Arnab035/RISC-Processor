@@ -1,8 +1,13 @@
 `include "Sysbus.defs"
 `include "decode1.sv"
-`include "registerFile.sv"
 `include "alu.sv"
+`include "data_memory.sv"
+`include "writeback.sv"
+`include "forwarding_unit_exe.sv"
+`include "hazard_detection_unit.sv"
+`include "adder.sv"
 
+// many modules can be broken down further.. however not done now !!
 
 module fetcher
 #(
@@ -12,7 +17,6 @@ module fetcher
   input  clk,
   input  fetch_en,
   input  [BUS_DATA_WIDTH-1:0] data,
-  input count ,
   input end_of_cycle,
   
   output [31:0] outIns
@@ -21,20 +25,7 @@ module fetcher
 logic low = 1;
 reg [31:0] ins, outIns;
 
-wire [5:0] out_alu_control;
-wire [5:0] out1_alu_control;
-wire [4:0] out_addressA;
-wire [4:0] out_addressB;
-wire [4:0] out_addressC;
-wire [BUS_DATA_WIDTH-1 : 0] out_imm;
-wire out_muxB_control;
-wire write_en;
-wire [BUS_DATA_WIDTH-1 : 0] dataA;
-wire [BUS_DATA_WIDTH-1 : 0] dataB;
-wire [BUS_DATA_WIDTH-1 : 0] dataOut;
-wire [BUS_DATA_WIDTH-1 : 0] writeBack;
-wire call_for_print, out_decode_en, out_reg_file_en, out_alu_en, out_writeBack_en;
-
+// define all connecting wires here
 logic r_decode_en;
 
 always @ (posedge clk)
@@ -56,50 +47,172 @@ assign out_decode_en = r_decode_en;
 	
 assign outIns = ins;
 
+wire wbRegWrite;
+wire [4:0] wbDestReg;
+wire [BUS_DATA_WIDTH-1 : 0] wbMemOrRegData;
+wire idBranch;
+wire idPCSrc;
+wire idMemRead;
+wire idMemWrite;
+wire idRegWrite;
+wire idMemOrReg;
+wire [5:0] aluControl;
+wire [BUS_DATA_WIDTH-1 : 0] idReadData1;
+wire [BUS_DATA_WIDTH-1 : 0] idReadData2;
+wire [4:0] idDestRegister;
+wire [BUS_DATA_WIDTH-1 : 0] idImm;
+wire [4:0] idRegisterRs;
+wire [4:0] idRegisterRt;
+wire [BUS_DATA_WIDTH-1 : 0] idPc;
+
 decode1 d (
 	.clk(clk),
-	.end_of_cycle(end_of_cycle),
-	.decode_en(out_decode_en),
+	.pc(pc),
 	.outIns(outIns),
-	.out_alu_control(out_alu_control),
-	.out_addressA(out_addressA),
-	.out_addressB(out_addressB),
-	.out_addressC(out_addressC),
-	.out_imm(out_imm),
-	.out_muxB_control(out_muxB_control),
-	.reg_file_en(out_reg_file_en)
+	.decode_en(out_decode_en),
+	.inRegWrite(wbRegWrite),    // regwrite signal comes from mem/wb stage, so do the below two signals
+	.inDestReg(wbDestReg),
+	.inMemOrRegData(wbMemOrRegData),
+	.end_of_cycle(end_of_cycle),
+	.outBranch(idBranch),
+	.outPCSrc(idPCSrc),
+	.outMemRead(idMemRead),
+	.outMemWrite(idMemWrite),
+	.outRegWrite(idRegWrite),
+	.outMemOrReg(idMemOrReg),
+	.outAluControl(aluControl),
+	.outReadData1(idReadData1),
+	.outReadData2(idReadData2),
+	.outDestRegister(idDestRegister),
+	.outImm(idImm),
+	.outRegisterRs(idRegisterRs),
+	.outRegisterRt(idRegisterRt),
+	.outPc(idPc)
 );
 
-registerFile rf (
-	.clk(clk),
-	.end_of_cycle(end_of_cycle),
-	.reg_file_en(out_reg_file_en),
-	.alu_control(out_alu_control),
-	.muxB_control(out_muxB_control),
-	.write_en(write_en),
-	.call_for_print(call_for_print),
-	.addressA(out_addressA),
-	.addressB(out_addressB),
-	.writeBack(dataOut),
-	.addressC(out_addressC),
-	.imm(out_imm),
-	.dataA(dataA),
-	.dataB(dataB),
-	.out_alu_control(out1_alu_control),
-	.out_alu_en(out_alu_en)
+wire exMemRead;
+wire [4:0] exRegisterRt;
+wire ifPCWrite;
+wire ifIfIdWrite;
+wire idCtrlMux;
+
+hazard_detection_unit hdu (
+	.inMemReadId(exMemRead),
+	.inRegisterRt(exRegisterRt),
+	.outIns(outIns),
+	.outPCWrite(ifPCWrite),
+	.outIfIdWrite(ifIfIdWrite),
+	.outCtrlMux(idCtrlMux)
 );
+
+wire [BUS_DATA_WIDTH-1 : 0] exResult;
+wire [BUS_DATA_WIDTH-1 : 0] memResult;
+wire fwdLogicA;
+wire fwdLogicB;
+wire [4:0] exDestReg;
+wire exBranch;
+wire exMemRead;
+wire exMemWrite;
+wire exMemOrReg;
+wire exPCSrc;
+wire exRegWrite;
+wire exZero;
 
 alu al (
 	.clk(clk),
 	.end_of_cycle(end_of_cycle),
-	.alu_en(out_alu_en),
-	.dataA(dataA),
-	.dataB(dataB),
-	.alu_control(out1_alu_control),
-	.dataOut(dataOut),
-	._aluOps(aluOps),
-	.send_call_for_print(call_for_print),
-	.write_en(write_en)
+	.inDataReg1(idReadData1),
+	.inDataReg2(idReadData2),
+	.inAluControl(aluControl),
+	.inBranch(idBranch),
+	.inMemRead(idMemRead),
+	.inMemWrite(idMemWrite),
+	.inMemOrReg(idMemOrReg),
+	.inRegisterRs(idRegisterRs),
+	.inRegisterRt(idRegisterRt),
+	.inPCSrc(idPCSrc),
+	.inRegWrite(idRegWrite),
+	.inImm(idImm),
+	.inDestReg(idDestReg),
+	.inExResult(exResult),
+	.inMemResult(memResult),
+	.forwardingLogicA(fwdLogicA),
+	.forwardingLogicB(fwdLogicB),
+	.outDestReg(exDestReg),
+	.outBranch(exBranch),
+	.outMemRead(exMemRead),
+	.outMemWrite(exMemWrite),
+	.outMemOrReg(exMemOrReg),
+	.outPCSrc(exPCSrc),
+	.outRegWrite(exRegWrite),
+	.outZero(exZero),
+	.outRegisterRt(exRegisterRt),
+	.outResult(exResult)
+);
+
+wire [BUS_DATA_WIDTH-1 : 0] ifBta;
+
+adder add (
+	.clk(clk),
+	.inPc(idPc),
+	.inImm(idImm),
+	.outBta(ifBta)
+);
+
+wire [4:0] memDestReg;
+wire memRegWrite;
+
+forwarding_unit_exe funit (
+	.inRegisterRsId(idRegisterRs),
+	.inRegisterRtId(idRegisterRt),
+	.inRegisterRdEx(exDestReg),
+	.inRegisterRdMem(memDestReg),
+	.inRegWriteEx(exRegWrite),
+	.inRegWriteMem(memRegWrite),
+	.outForwardA(fwdLogicA),
+	.outForwardB(fwdLogicB)
+);
+
+wire [BUS_DATA_WIDTH-1 : 0] memReadData;
+wire [BUS_DATA_WIDTH-1 : 0] memResult;
+wire memMemOrReg;
+wire memPcSrc;
+
+data_memory dmem (
+	.clk(clk),
+	.inRegWrite(exRegWrite),
+	.inDestReg(exDestReg),
+	.inResult(exResult),
+	.writeData(exWriteData),     // write data for stores
+	.inMemOrReg(exMemOrReg),
+	.inMemWrite(exMemWrite),
+	.inPcSrc(exPCSrc),
+	.inBranch(exBranch),
+	.inZero(exZero),
+	.inBta(ifBta),
+	.readData(memReadData),   // using load instruction, read data
+	.outDestReg(memDestReg),
+	.outResult(memResult),
+	.outMemOrReg(memMemOrReg),
+	.outRegWrite(memRegWrite),
+	.outPcSrc(memPcSrc),
+	.outBta(ifBta)
+);
+
+wire [BUS_DATA_WIDTH-1 : 0] wbMemOrRegData;
+wire [4:0] wbDestReg;
+wire wbRegWrite;
+
+writeback wb (
+	// no clock
+	.inMemOrReg(memMemOrReg),
+	.inReadData(memReadData),
+	.inALUData(memResult),
+	.inDestReg(memDestReg),
+	.inRegWrite(memRegWrite),
+	.outMemOrRegData(wbMemOrRegData),
+	.outDestReg(wbDestReg),
+	.outRegWrite(wbRegWrite)
 );
 
 endmodule
