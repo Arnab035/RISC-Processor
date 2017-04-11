@@ -29,6 +29,7 @@ module alu
 	input [1:0] forwardingLogicB,
 	
 	// outputs are here
+	output [4:0] outDestReg,
 	output outBranch,
 	output outMemRead,
 	output outMemWrite,
@@ -36,6 +37,7 @@ module alu
 	output outPCSrc,
 	output outRegWrite,
 	output outZero,       // this is a zero indicator to be used when we perform branches
+	output outRegisterRt,
 	
 	output [BUS_DATA_WIDTH-1 : 0] outResult,
 	output send_call_for_print  // not sure of this yet..
@@ -50,6 +52,8 @@ logic [4:0] destReg;
 
 reg [BUS_DATA_WIDTH-1 : 0] inData1;
 reg [BUS_DATA_WIDTH-1 : 0] inData2;
+
+assign outRegisterRt = inRegisterRt;
 
 always_comb begin
 	// inputs from forwarding unit module

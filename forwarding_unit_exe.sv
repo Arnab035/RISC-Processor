@@ -30,17 +30,17 @@ always_comb begin
 		outForwardB = 10;
 	end
 	// mem/wb hazard
-	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRsId) ) begin
+	else if(inRegWriteMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRsId) ) begin
 		outForwardA = 01;
 	end
-	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRtId) ) begin
+	else if(inRegWriteMem && (inRegisterRdMem != 0) && (inRegisterRdMem == inRegisterRtId) ) begin
 		outForwardB = 01;
 	end
 	// multiple hazards (multiple adds writing to same operand)
-	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRsId) && (inRegisterRdMem == inRegisterRsId)) begin
+	else if(inRegWriteMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRsId) && (inRegisterRdMem == inRegisterRsId)) begin
 		outForwardA = 01;
 	end
-	else if(inRegWriteRdMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRtId) && (inRegisterRdMem == inRegisterRtId)) begin
+	else if(inRegWriteMem && (inRegisterRdMem != 0) && (inRegisterRdEx != inRegisterRtId) && (inRegisterRdMem == inRegisterRtId)) begin
 		outForwardB = 01;
 	end
 	else begin
