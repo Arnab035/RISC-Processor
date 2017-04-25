@@ -43,7 +43,7 @@ always_comb begin
 			begin
 				if(!bus_bid2) begin
 					next_state = IDLE;
-				end
+				end 
 			end
 	endcase
 end
@@ -57,24 +57,25 @@ always @ (posedge clk)  //for transition of states
 	end 
 
 // output logic
-always_ff @ (posedge clk) 
+always_comb begin
 	case(state) 
 		IDLE:
 			begin
-				bus_grant1 <= 0;
-				bus_grant2 <= 0;
+				bus_grant1 = 0;
+				bus_grant2 = 0;
 			end
 		IC_BUSY:
 			begin
-				bus_grant1 <= 1;
-				bus_grant2 <= 0;
+				bus_grant1 = 1;
+				bus_grant2 = 0;
 			end
 		DC_BUSY:
 			begin
-				bus_grant1 <= 0;
-				bus_grant2 <= 1;
+				bus_grant1 = 0;
+				bus_grant2 = 1;
 			end
 	endcase
+end
 
 
 
