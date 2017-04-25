@@ -56,6 +56,8 @@ instructionCache ich (
 );
 
 arbiter ab (
+	.clk(clk),
+	.reset(reset),
 	.bus_bid1(bus_bid1),
 	.bus_grant(bus_grant1),
 	.bus_bid2(bus_bid2),
