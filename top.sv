@@ -33,22 +33,22 @@ always @ (posedge clk)
       pc <= entry;
     end 
 	
-wire bus_bid;
-wire bus_grant;
+wire bus_bid1, bus_bid2;
+wire bus_grant1, bus_grant2;
 
 
 instructionCache ich (
 		.clk(clk),
 		.reset(reset),
 		.pc(pc),
-		.grant(bus_grant),
+		.grant(bus_grant1),
 		.respcyc(bus_respcyc),
 		.resp(bus_resp),
 		.reqack(bus_reqack),
 		.resptag(bus_resptag),
 		
 		// list of outputs
-		.bid(bus_bid),
+		.bid(bus_bid1),
 		.reqcyc(bus_reqcyc),
 		.respack(bus_respack),
 		.req(bus_req),
@@ -56,22 +56,24 @@ instructionCache ich (
 );
 
 arbiter ab (
-	.bus_bid(bus_bid),
-	.bus_grant(bus_grant)
+	.bus_bid1(bus_bid1),
+	.bus_grant(bus_grant1),
+	.bus_bid2(bus_bid2),
+	.bus_grant2(bus_grant2)
 );
 
 dataCache dch (
 		.clk(clk),
 		.reset(reset),
 		
-		.grant(bus_grant),
+		.grant(bus_grant2),
 		.reqcyc(bus_reqcyc),
 		.respack(bus_respack),
 		.req(bus_req),
 		.resptag(bus_resptag),
 		
 		// list of outputs
-		.bid(bus_bid),
+		.bid(bus_bid2),
 		.reqcyc(bus_reqcyc),
 		.respack(bus_respack),
 		.req(bus_req),
