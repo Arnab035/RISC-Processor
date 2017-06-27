@@ -1,81 +1,96 @@
-
-// arbiter is a state machine which will have two states :- either being idle or busy
-// this will allow at one time either the instruction cache or the data cache to access
-// the bus and the memory controller subsequently
-
-module arbiter
+module arbiter 
+#(
+	BUS_DATA_WIDTH = 64,
+	BUS_TAG_WIDTH = 13
+)
 (
-	input bus_bid1,
 	input clk,
 	input reset,
-	input bus_bid2,
+
+	// interface to top
+	output [BUS_DATA_WIDTH-1 : 0] bus_req,
+	output bus_reqcyc,
+	output [BUS_TAG_WIDTH-1 : 0] bus_reqtag,
+	output bus_respack,
+	input bus_respcyc,
+	input bus_reqack,
+	input [BUS_DATA_WIDTH-1 : 0] bus_resp,
+	input [BUS_TAG_WIDTH-1 : 0] bus_resptag,
 	
-	output bus_grant1,
-	output bus_grant2
-)
-
-enum {
-	IDLE,
-	IC_BUSY,
-	DC_BUSY
-} state, next_state;
+	// bus fetcher
+	input [BUS_DATA_WIDTH-1 : 0] ibus_req,
+	input ibus_reqcyc,
+	input [BUS_TAG_WIDTH-1 : 0] ibus_reqtag,
+	input ibus_respack,
+	output ibus_respcyc,
+	output [BUS_DATA_WIDTH-1 : 0] ibus_resp,
+	output [BUS_TAG_WIDTH - 1 : 0] ibus_resptag,
+	
+	// bus data
+	input [BUS_DATA_WIDTH-1 : 0] dbus_req,
+	input dbus_reqcyc,
+	input [BUS_TAG_WIDTH-1 : 0] dbus_reqtag,
+	input dbus_respack,
+	output dbus_respcyc,
+	output [BUS_DATA_WIDTH-1 : 0] dbus_resp,
+	output [BUS_TAG_WIDTH - 1 : 0] dbus_resptag
+);
 
 always_comb begin
-	// next state logic
-	case(state) begin
-		IDLE:
-			begin
-				if(bus_bid1 && bus_bid2) begin
-					next_state = DC_BUSY;
-				end else if(bus_bid1) begin
-					next_state = IC_BUSY;
-				end else if(bus_bid2) begin
-					next_state = DC_BUSY;
-				end
-			end
-		IC_BUSY:
-			begin
-				if(!bus_bid1) begin
-					next_state = IDLE;
-				end
-			end
-		DC_BUSY:
-			begin
-				if(!bus_bid2) begin
-					next_state = IDLE;
-				end 
-			end
-	endcase
+	bus_req = 0;
+	bus_reqcyc = 0;
+	bus_reqtag = 0;
+	if(ibus_req) begin
+		bus_req = ibus_req;
+		bus_reqcyc = ibus_reqcyc;
+		bus_reqtag = ibus_reqtag;
+	end
 end
 
-always @ (posedge clk)  //for transition of states
-  begin
-	if(reset)
-		state <=IDLE;
-	else
-		state <= next_state;
-	end 
-
-// output logic
 always_comb begin
-	case(state) 
-		IDLE:
-			begin
-				bus_grant1 = 0;
-				bus_grant2 = 0;
-			end
-		IC_BUSY:
-			begin
-				bus_grant1 = 1;
-				bus_grant2 = 0;
-			end
-		DC_BUSY:
-			begin
-				bus_grant1 = 0;
-				bus_grant2 = 1;
-			end
-	endcase
+	bus_req = 0;
+	bus_reqcyc = 0;
+	bus_reqtag = 0;
+	if(dbus_req) begin
+		bus_req = dbus_req;
+		bus_reqcyc = dbus_reqcyc;
+		bus_reqtag = dbus_reqtag;
+	end
 end
 
+always_comb begin
+	bus_respack = 0;
+	if(ibus_respack) begin
+		bus_respack = ibus_respack;
+	end else if(dbus_respack) begin
+		bus_respack = dbus_respack;
+	end
+end
 
+always_comb begin
+	ibus_respcyc = 0;
+	ibus_resp = 0;
+	ibus_resptag = 0;
+	//ibus_reqack = 0;
+	if(bus_respcyc) begin
+		ibus_respcyc = bus_respcyc;
+		ibus_resp = bus_resp;
+		ibus_resptag = bus_resptag;
+		//ibus_reqack = bus_reqack;
+	end
+end
 
+always_comb begin
+	dbus_respcyc = 0;
+	dbus_resp = 0;
+	dbus_resptag = 0;
+	//dbus_reqack = 0;
+	if(bus_respcyc) begin
+		dbus_respcyc = bus_respcyc;
+		dbus_resp = bus_resp;
+		dbus_resptag = bus_resptag;
+		//dbus_reqack = bus_reqack;
+	end
+end
+	
+endmodule
