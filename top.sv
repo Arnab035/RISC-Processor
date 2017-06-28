@@ -24,9 +24,12 @@ module top
   logic [63:0] pc, npc;
 
 
-
   always_comb begin
-    npc = pc + 4;
+    if(dmem_pcsrc == 0) begin
+      npc = pc + 4;
+    end else begin
+      npc = dmem_addrjump;
+    end
   end
 
   always @ (posedge clk)
@@ -117,10 +120,22 @@ module top
     .outDestRegister(dec_destregister)
 );
 
+logic [1:0] fwd_forwarda, fwd_forwardb;
+
+forwardingunit fw(
+    .inRegisterRs(dec_registerrs),
+    .inRegisterRt(dec_registerrt),
+    .inDestRegisterEx(alu_destregister),
+    .inDestRegisterMem(dmem_destregister),
+    .inRegWriteEx(alu_regwrite),
+    .inRegWriteMem(dmem_regwrite),
+    .outForwardA(fwd_forwarda),
+    .outForwardB(fwd_forwardb)
+);
+
 logic [4:0] alu_destregister;
 logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero;
 logic [BUS_DATA_WIDTH-1 : 0] alu_addrjump, alu_result, alu_datareg2;
-
 
 alu al(
     .clk(clk),
@@ -132,8 +147,6 @@ alu al(
     .inMemRead(dec_memread),
     .inMemWrite(dec_memwrite),
     .inMemOrReg(dec_memorreg),
-    .inRegisterRs(dec_registerrs),
-    .inRegisterRt(dec_registerrt),
     .inPCSrc(dec_pcsrc),
     .inRegWrite(dec_regwrite),
     .inImm(dec_imm),
@@ -151,7 +164,8 @@ alu al(
     .outDataReg2(alu_datareg2)
 );
 
-logic [BUS_DATA_WIDTH-1:0] dmem_addrjump, dmem_readdata, dmem_readdata;
+
+logic [BUS_DATA_WIDTH-1:0] dmem_addrjump, dmem_readdata;
 logic [4:0] dmem_destregister;
 logic dmem_memorreg;
 logic dmem_regwrite, dmem_pcsrc;
@@ -199,7 +213,5 @@ writeback wb(
   .outDestRegister(wback_destregister),
   .outRegWrite(wmack_regwrite)
 );
-
-
 
 endmodule
