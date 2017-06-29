@@ -84,6 +84,8 @@ module top
   fetcher ft(
     .clk(clk),
     .pc(pc),
+    .inIdWrite(hdu_outidwrite),
+    .inPCWrite(hdu_outpcwrite),
     .bus_req(ftbus_req),
     .bus_reqcyc(ftbus_reqcyc),
     .bus_reqtag(ftbus_reqtag),
@@ -95,14 +97,28 @@ module top
     .out_pr_data(ft_pr_data)
   );
 
+  logic hdu_outstall, hdu_outidwrite, hdu_outpcwrite;
+
+  hazarddetectionunit hdu(
+    .inMemReadEx(dec_memread),
+    .inDestRegisterEx(dec_destregister),
+    .inIns(ft_pr_data),
+    .outStall(hdu_outstall),
+    .outIdWrite(hdu_outidwrite),
+    .outPCWrite(hdu_outpcwrite)
+  );
+
   logic dec_branch, dec_pcsrc, dec_memread, dec_memwrite, dec_regwrite, dec_memorreg;
   logic [5:0] dec_alucontrol;
   logic [BUS_DATA_WIDTH-1:0] dec_readdata1, dec_readdata2, dec_imm, dec_pc;
   logic [4:0] dec_registerrs, dec_registerrt, dec_destregister;
+  logic [2:0] dec_loadtype;
+  logic [1:0] dec_storetype;
 
   decode1 dc(
     .clk(clk),
     .pc(ft_addr),
+    .inStall(hdu_outstall)
     .outIns(ft_pr_data),
     .outBranch(dec_branch),
     .outPCSrc(dec_pcsrc),
@@ -117,7 +133,9 @@ module top
     .outPc(dec_pc),
     .outRegisterRs(dec_registerrs),
     .outRegisterRt(dec_registerrt),
-    .outDestRegister(dec_destregister)
+    .outDestRegister(dec_destregister),
+    .outLoadType(dec_loadtype),
+    .outStoreType(dec_storetype)
 );
 
 logic [1:0] fwd_forwarda, fwd_forwardb;
@@ -136,6 +154,8 @@ forwardingunit fw(
 logic [4:0] alu_destregister;
 logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero;
 logic [BUS_DATA_WIDTH-1 : 0] alu_addrjump, alu_result, alu_datareg2;
+logic [2:0] alu_loadtype;
+logic [1:0] alu_storetype;
 
 alu al(
     .clk(clk),
@@ -151,10 +171,14 @@ alu al(
     .inRegWrite(dec_regwrite),
     .inImm(dec_imm),
     .inDestRegister(dec_destregister),
+    .inLoadType(dec_loadtype),
+    .inStoreType(dec_storetype),
     .inForwardA(fwd_forwarda),
     .inForwardB(fwd_forwardb),
     .inResultEx(alu_result),
     .inResultMem(wback_regdata),
+    .outStoreType(alu_storetype),
+    .outLoadType(alu_loadtype),
     .outDestRegister(alu_destregister),
     .outBranch(alu_branch),
     .outMemRead(alu_memread),
@@ -174,6 +198,7 @@ logic [4:0] dmem_destregister;
 logic dmem_memorreg;
 logic dmem_regwrite, dmem_pcsrc;
 
+
 datamemory dm(
     .clk(clk),
     .inDestRegister(alu_destregister),
@@ -187,6 +212,8 @@ datamemory dm(
     .inAddrJump(alu_addrjump),
     .inResult(alu_result),
     .inDataReg2(alu_datareg2),
+    .inLoadType(alu_loadtype),
+    .inStoreType(alu_storetype),
     .bus_respcyc(dbus_respcyc),
     .bus_resp(dbus_resp),
     .bus_resptag(dbus_resptag),
