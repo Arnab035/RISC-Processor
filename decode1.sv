@@ -12,10 +12,11 @@ module decode1
 
 	// input decode_en, 
 	// TODO : verify what inputs come from wb stage //
-	/*
+	
 	input inRegWrite,
-	input inCtrlMux,    
-	*/
+	input [4:0] inDestRegister,
+	input [BUS_DATA_WIDTH-1:0] inRegData,    
+	
 
 	output outBranch,
 	output outPCSrc,
@@ -56,6 +57,15 @@ logic pcSrc, regWrite;
 logic memWrite, memRead, branch, memOrReg;
 
 logic [5:0] aluControl;
+
+
+// TODO: handle writeback
+
+always @ (posedge clk) begin
+	if(inRegWrite) begin
+		mem[inDestRegister] <= inRegData;
+	end
+end
 
 // TODO: branch instructions/jump instructions and ins like li/mov 
 
