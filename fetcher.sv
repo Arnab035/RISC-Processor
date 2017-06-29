@@ -9,6 +9,8 @@ module fetcher
   input  bus_respcyc,
   input  [BUS_DATA_WIDTH-1:0] bus_resp,
   input  [BUS_TAG_WIDTH-1:0] bus_resptag,
+  input  inIdWrite,
+  input  inPCWrite,
   output bus_reqcyc,
   output [BUS_DATA_WIDTH-1:0] bus_req,
   output [BUS_TAG_WIDTH-1:0] bus_reqtag,
@@ -43,8 +45,10 @@ module fetcher
   always_ff @ (posedge clk) begin
     if (bus_respcyc && send_respack) begin
       pr_pc <= addr;
-      addr <= naddr;
-      pr_data <= bus_resp[63:32];
+      if(inIdWrite == 0) begin
+        addr <= naddr;
+        pr_data <= bus_resp[63:32];
+      end
       bus_respack <= 1;
       if (bus_resp == 0) begin
 	       $finish;
@@ -53,13 +57,17 @@ module fetcher
     end 
     else if(bus_respcyc && !send_respack) begin
       pr_pc <= addr;
-      addr <= naddr;
-      pr_data <= bus_resp[31:0];
+      if(inIdWrite == 0) begin
+        addr <= naddr;
+        pr_data <= bus_resp[31:0];
+      end
       bus_respack <= 0;
       if (bus_resp == 0) begin
          $finish;
       end
-      send_respack <= 1;    	
+      if(inPCWrite == 0) begin
+        send_respack <= 1;
+      end    	
     end
     else begin
       send_respack <= 0;
