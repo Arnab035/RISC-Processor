@@ -6,8 +6,9 @@ module decode1
 )
 (
 	input clk,
-	input [BUS_DATA_WIDTH-1 : 0] pc,  // pc must go to execute stage
+	input [BUS_DATA_WIDTH-1 : 0] pc, 
 	input [31:0] outIns,
+	input inStall,
 
 	// input decode_en, 
 	// TODO : verify what inputs come from wb stage //
@@ -32,7 +33,10 @@ module decode1
 	
 	output [4:0] outRegisterRs,  
 	output [4:0] outRegisterRt,	 
-	output [BUS_DATA_WIDTH-1 : 0] outPc   
+	output [BUS_DATA_WIDTH-1 : 0] outPc
+
+	output [2:0] outLoadType,
+	output [1:0] outStoreType   
 );
 
 logic [BUS_DATA_WIDTH-1 : 0] mem[31:0];   
@@ -41,6 +45,9 @@ logic [BUS_DATA_WIDTH-1 : 0] readData1, readData2, _pc;
 logic [4:0] destRegister;
 logic [4:0] registerRs;
 logic [4:0] registerRt;
+
+logic [1:0] storeType;
+logic [2:0] loadType;
 
 logic [BUS_DATA_WIDTH-1:0] imm;
 
@@ -55,35 +62,51 @@ logic [5:0] aluControl;
 always @ (posedge clk) begin 
 	_pc <= pc;
 	pcSrc <= 0;          // this only becomes 1 when there is a branch taken
-	if(0) begin          // TODO : inCtrlMux will come here
-			// pass  - all control lines are 0.
+	if(inStall) begin          
+		regWrite <= 0;
+		branch <= 0;
+		memRead <= 0;
+		memWrite <= 0;
+		memOrReg <= 0;
+		aluControl <= 0;
+		readData1 <= 0;
+		readData2 <= 0;
+		destRegister <= 0;
+		imm <= 0;
+		registerRs <= 0;
+		registerRt <= 0;
 	end else begin
 			// stores
 			7'b0100011:
 				begin
+					regWrite <= 0;
 					branch <= 0;
 					memRead <= 0;
 					memWrite <= 1;
 					memOrReg <= 0; // TODO : does it matter here
 					readData1 <= mem[outIns[19:15]];
 					destRegister <= 0;
-					imm <= {{52{outIns[31]}} , outIns[31:20]};
+					imm <= {{52{outIns[31]}}, outIns[31:25], outIns[11:7]};  // store immediate
 					readData2 <= mem[outIns[24:20]];
 					registerRs <= outIns[19:15];
-					registerRt <= outIns[24:20];   // contains the data to be loaded into memory
+					registerRt <= outIns[24:20];   
 					case(outIns[14:12]) 
 						3'b000: 
 							// sb
 							aluControl <= 6'b000001;   // addi
+							storeType <= 2'b11;
 						3'b001: 
 							// sh
 							aluControl <= 6'b000001;
+							storeType <= 2'b10;
 						3'b010:	
 							// sw
 							aluControl <= 6'b000001;
+							storeType <= 2'b01
 						3'b011:	
 							// sd
 							aluControl <= 6'b000001;
+							storeType <= 2'b00;
 					endcase
 				end
 			// loads
@@ -91,6 +114,7 @@ always @ (posedge clk) begin
 				begin
 					branch <= 0;
 					memRead <= 1;
+					regWrite <= 1;
 					memWrite <= 0;
 					memOrReg <= 1; // go from memory
 					readData1 <= mem[outIns[19:15]];
@@ -98,29 +122,36 @@ always @ (posedge clk) begin
 					imm <= {{52{outIns[31]}} , outIns[31:20]};
 					readData2 <= mem[outIns[24:20]];
 					registerRs <= outIns[19:15];
-					registerRt <= outIns[24:20];
+					registerRt <= 0; 
 					case(outIns[14:12])
 						3'b000:
 							// lb
 							aluControl <= 6'b000001;
+							loadType <= 3'b001;
 						3'b001:
 							aluControl <= 6'b000001;
+							loadType <= 3'b010;
 							//lh
 						3'b010:
 							// lw
 							aluControl <= 6'b000001;
+							loadType <= 3'b011;
 						3'b100: 
 							// lbu
 							aluControl <= 6'b000001;
+							loadType <= 3'b100;
 						3'b101:	
 							// lhu
 							aluControl <= 6'b000001;
+							loadType <= 3'b101;
 						3'b110:
 							// lwu
 							aluControl <= 6'b000001;
+							loadType <= 3'b110;
 						3'b011: 
 							// ld
 							aluControl <= 6'b000001;
+							loadType <= 3'b000;
 						default:
 							$display("wrong opcode format");
 					endcase
@@ -258,9 +289,7 @@ always @ (posedge clk) begin
 								aluControl <= 6'b011011;
 								if(outIns[19:15] == 5'd0) begin
 									readData1 <= 0;
-								end else begin
-									// subw
-								end
+								end //subw
 							end
 							else if(outIns[31:25] == 7'b0000001) begin
 								aluControl <= 6'b100111;
@@ -359,8 +388,9 @@ assign outMemWrite = memWrite;
 assign outDestRegister = destRegister;
 assign outRegisterRs = registerRs;
 assign outRegisterRt = registerRt;  
-
+assign outLoadType = loadType;
 assign outRegWrite = regWrite;
+assign outStoreType = storeType;
 
 assign outImm = imm;
 
