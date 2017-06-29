@@ -120,6 +120,9 @@ module top
     .pc(ft_addr),
     .inStall(hdu_outstall)
     .outIns(ft_pr_data),
+    .inRegWrite(wback_regwrite),
+    .inDestRegister(wback_destregister),
+    .inRegData(wback_regdata),
     .outBranch(dec_branch),
     .outPCSrc(dec_pcsrc),
     .outMemRead(dec_memread),
@@ -242,7 +245,7 @@ writeback wb(
   .inRegWrite(dmem_regwrite),
   .outRegData(wback_regdata),
   .outDestRegister(wback_destregister),
-  .outRegWrite(wmack_regwrite)
+  .outRegWrite(wback_regwrite)
 );
 
 endmodule
