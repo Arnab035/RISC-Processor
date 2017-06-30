@@ -1,3 +1,5 @@
+`include "Sysbus.defs"
+
 module top
 #(
   BUS_DATA_WIDTH = 64,
@@ -7,8 +9,10 @@ module top
   input  clk,
          reset,
 
-  // 64-bit address of the program entry point
+  // 64-bit addresses of the program entry point and initial stack pointer
   input  [63:0] entry,
+  input  [63:0] stackptr,
+  input  [63:0] satp,
   
   // interface to connect to the bus
   output bus_reqcyc,
@@ -112,13 +116,13 @@ module top
   logic [5:0] dec_alucontrol;
   logic [BUS_DATA_WIDTH-1:0] dec_readdata1, dec_readdata2, dec_imm, dec_pc;
   logic [4:0] dec_registerrs, dec_registerrt, dec_destregister;
-  logic [2:0] dec_loadtype;
+  logic [2:0] dec_loadtype, dec_branchtype;
   logic [1:0] dec_storetype;
 
   decode1 dc(
     .clk(clk),
     .pc(ft_addr),
-    .inStall(hdu_outstall)
+    .inStall(hdu_outstall),
     .outIns(ft_pr_data),
     .inRegWrite(wback_regwrite),
     .inDestRegister(wback_destregister),
@@ -138,7 +142,8 @@ module top
     .outRegisterRt(dec_registerrt),
     .outDestRegister(dec_destregister),
     .outLoadType(dec_loadtype),
-    .outStoreType(dec_storetype)
+    .outStoreType(dec_storetype),
+    .outBranchType(dec_branchtype)
 );
 
 logic [1:0] fwd_forwarda, fwd_forwardb;
@@ -174,6 +179,7 @@ alu al(
     .inRegWrite(dec_regwrite),
     .inImm(dec_imm),
     .inDestRegister(dec_destregister),
+    .inBranchType(dec_branchtype),
     .inLoadType(dec_loadtype),
     .inStoreType(dec_storetype),
     .inForwardA(fwd_forwarda),
