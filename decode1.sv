@@ -34,8 +34,8 @@ module decode1
 	
 	output [4:0] outRegisterRs,  
 	output [4:0] outRegisterRt,	 
-	output [BUS_DATA_WIDTH-1 : 0] outPc
-
+	output [BUS_DATA_WIDTH-1 : 0] outPc,
+	output [2:0] outBranchType,
 	output [2:0] outLoadType,
 	output [1:0] outStoreType   
 );
@@ -48,7 +48,7 @@ logic [4:0] registerRs;
 logic [4:0] registerRt;
 
 logic [1:0] storeType;
-logic [2:0] loadType;
+logic [2:0] loadType, branchType;
 
 logic [BUS_DATA_WIDTH-1:0] imm;
 
@@ -86,14 +86,53 @@ always @ (posedge clk) begin
 		registerRs <= 0;
 		registerRt <= 0;
 	end else begin
-			// stores
+		case(outIns[6:0])
+			7'b1100011:
+				// branches
+				begin
+					imm <= {{52{outIns[31]}}, outIns[7], outIns[30:25], outIns[11:8], 0};
+					branch <= 1;
+					readData1 <= mem[outIns[19:15]];
+					readData2 <= mem[outIns[24:20]];
+					destRegister <= 0;
+					regWrite <= 0;
+					memRead <= 0;
+					memWrite <= 0;
+					memOrReg <= 0;  
+					registerRs <= outIns[19:15];
+					registerRt <= outIns[24:20];
+					case(outIns[14:12])
+						3'b000:  // beq
+							branchType <= 3'b001;
+							aluControl <= 6'b001101;
+						3'b001:	// bne
+							branchType <= 3'b010;
+							aluControl <= 6'b001101;
+						3'b100:  // blt
+							branchType <= 3'b100;
+							aluControl <= 6'b001111;
+						3'b101:   // bge
+							branchType <= 3'b011;
+							aluControl <= 6'b001111;
+						3'b110:   // bltu
+							branchType <= 3'b110;
+							aluControl <= 6'b010000;
+						3'b111:   // bgeu
+							branchType <= 3'b101;
+							aluControl <= 6'b010000;
+						default:
+							branchType <= 3'b000;
+							aluControl <= 6'b000000;
+					endcase
+				end
 			7'b0100011:
+				// stores
 				begin
 					regWrite <= 0;
 					branch <= 0;
 					memRead <= 0;
 					memWrite <= 1;
-					memOrReg <= 0; // TODO : does it matter here
+					memOrReg <= 0; 
 					readData1 <= mem[outIns[19:15]];
 					destRegister <= 0;
 					imm <= {{52{outIns[31]}}, outIns[31:25], outIns[11:7]};  // store immediate
@@ -103,20 +142,28 @@ always @ (posedge clk) begin
 					case(outIns[14:12]) 
 						3'b000: 
 							// sb
-							aluControl <= 6'b000001;   // addi
-							storeType <= 2'b11;
+							begin
+								aluControl <= 6'b000001;   // addi
+								storeType <= 2'b11;
+							end
 						3'b001: 
 							// sh
-							aluControl <= 6'b000001;
-							storeType <= 2'b10;
+							begin
+								aluControl <= 6'b000001;
+								storeType <= 2'b10;
+							end
 						3'b010:	
 							// sw
-							aluControl <= 6'b000001;
-							storeType <= 2'b01
+							begin
+								aluControl <= 6'b000001;
+								storeType <= 2'b01;
+							end
 						3'b011:	
 							// sd
-							aluControl <= 6'b000001;
-							storeType <= 2'b00;
+							begin
+								aluControl <= 6'b000001;
+								storeType <= 2'b00;
+							end
 					endcase
 				end
 			// loads
@@ -136,32 +183,46 @@ always @ (posedge clk) begin
 					case(outIns[14:12])
 						3'b000:
 							// lb
-							aluControl <= 6'b000001;
-							loadType <= 3'b001;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b001;
+							end
 						3'b001:
-							aluControl <= 6'b000001;
-							loadType <= 3'b010;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b010;
+							end
 							//lh
 						3'b010:
 							// lw
-							aluControl <= 6'b000001;
-							loadType <= 3'b011;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b011;
+							end
 						3'b100: 
 							// lbu
-							aluControl <= 6'b000001;
-							loadType <= 3'b100;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b100;
+							end
 						3'b101:	
 							// lhu
-							aluControl <= 6'b000001;
-							loadType <= 3'b101;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b101;
+							end
 						3'b110:
 							// lwu
-							aluControl <= 6'b000001;
-							loadType <= 3'b110;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b110;
+							end
 						3'b011: 
 							// ld
-							aluControl <= 6'b000001;
-							loadType <= 3'b000;
+							begin
+								aluControl <= 6'b000001;
+								loadType <= 3'b000;
+							end
 						default:
 							$display("wrong opcode format");
 					endcase
@@ -401,6 +462,7 @@ assign outRegisterRt = registerRt;
 assign outLoadType = loadType;
 assign outRegWrite = regWrite;
 assign outStoreType = storeType;
+assign outBranchType = branchType;
 
 assign outImm = imm;
 
