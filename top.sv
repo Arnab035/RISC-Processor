@@ -112,7 +112,7 @@ module top
     .outPCWrite(hdu_outpcwrite)
   );
 
-  logic dec_branch, dec_pcsrc, dec_memread, dec_memwrite, dec_regwrite, dec_memorreg;
+  logic dec_branch, dec_pcsrc, dec_memread, dec_memwrite, dec_regwrite, dec_memorreg, dec_jalr, dec_jump;
   logic [5:0] dec_alucontrol;
   logic [BUS_DATA_WIDTH-1:0] dec_readdata1, dec_readdata2, dec_imm, dec_pc;
   logic [4:0] dec_registerrs, dec_registerrt, dec_destregister;
@@ -133,6 +133,8 @@ module top
     .outMemWrite(dec_memwrite),
     .outRegWrite(dec_regwrite),
     .outMemOrReg(dec_memorreg),
+    .outJalr(dec_jalr),
+    .outJump(dec_jump),
     .outAluControl(dec_alucontrol),
     .outReadData1(dec_readdata1),
     .outReadData2(dec_readdata2),
@@ -160,7 +162,7 @@ forwardingunit fw(
 );
 
 logic [4:0] alu_destregister;
-logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero;
+logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero, alu_jump;
 logic [BUS_DATA_WIDTH-1 : 0] alu_addrjump, alu_result, alu_datareg2;
 logic [2:0] alu_loadtype;
 logic [1:0] alu_storetype;
@@ -177,6 +179,8 @@ alu al(
     .inMemOrReg(dec_memorreg),
     .inPCSrc(dec_pcsrc),
     .inRegWrite(dec_regwrite),
+    .inJump(dec_jump),
+    .inJalr(dec_jalr),
     .inImm(dec_imm),
     .inDestRegister(dec_destregister),
     .inBranchType(dec_branchtype),
@@ -193,6 +197,7 @@ alu al(
     .outMemRead(alu_memread),
     .outMemWrite(alu_memwrite),
     .outMemOrReg(alu_memorreg),
+    .outJump(alu_jump),
     .outPCSrc(alu_pcsrc),
     .outRegWrite(alu_regwrite),
     .outZero(alu_zero),
@@ -212,6 +217,7 @@ datamemory dm(
     .clk(clk),
     .inDestRegister(alu_destregister),
     .inBranch(alu_branch),
+    .inJump(alu_jump),
     .inMemRead(alu_memread),
     .inMemWrite(alu_memwrite),
     .inMemOrReg(alu_memorreg),
