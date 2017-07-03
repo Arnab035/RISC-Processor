@@ -24,14 +24,14 @@ module decode1
 	output outMemWrite,
 	output outRegWrite,       
 	output outMemOrReg,
+	output outJalr,
+	output outJump,
 	
 	output [5:0] outAluControl,   
 	output [BUS_DATA_WIDTH-1:0] outReadData1,  
 	output [BUS_DATA_WIDTH-1:0] outReadData2,  
 	output [4:0] outDestRegister,
 	output [BUS_DATA_WIDTH-1:0] outImm,   
-	
-	
 	output [4:0] outRegisterRs,  
 	output [4:0] outRegisterRt,	 
 	output [BUS_DATA_WIDTH-1 : 0] outPc,
@@ -52,8 +52,8 @@ logic [2:0] loadType, branchType;
 
 logic [BUS_DATA_WIDTH-1:0] imm;
 
-logic pcSrc, regWrite;
-
+logic pcSrc, regWrite, jump;
+logic jalr=0;
 logic memWrite, memRead, branch, memOrReg;
 
 logic [5:0] aluControl;
@@ -85,11 +85,86 @@ always @ (posedge clk) begin
 		imm <= 0;
 		registerRs <= 0;
 		registerRt <= 0;
+		jump <= 0;
+		jalr <= 0;
 	end else begin
+		// add-sub immediate
 		case(outIns[6:0])
+			7'b0010011:
+				begin
+					readData1 <= mem[outIns[19:15]];
+					readData2 <= 0;
+					destRegister <= outIns[11:7];
+					regWrite <= 1;
+					branch <= 0;
+					memRead <= 0;
+					memWrite <= 0;
+					imm <= {{52{outIns[31]}} , outIns[31:20]};  // sign-extended immediate sent
+					memOrReg <= 0;  // value from alu
+					registerRs <= outIns[19:15];
+					registerRt <= 0;   // immediate
+					jump <= 0;
+					jalr <= 0;
+					case(outIns[14:12])
+						3'b010:
+							aluControl <= 6'b000010;   // slti
+						3'b011:
+							aluControl <= 6'b000011;
+						3'b100:
+							aluControl <= 6'b000100;    // xori
+						3'b110:
+							aluControl <= 6'b000101;  // ori
+						3'b111:
+							aluControl <= 6'b000110;   // andi
+						3'b001:
+							aluControl <= 6'b000111;     // slli
+						3'b101:
+							if(outIns[31:25] == 7'b0000000) begin
+								aluControl <= 6'b001000;
+							end
+							else if(outIns[31:25] == 7'b0100000) begin
+								aluControl <= 6'b001001;
+								// srai
+							end
+						endcase
+					end
+			7'b1101111:
+				// jal
+				branch <= 1;
+				jump <= 1;
+				mem[outIns[11:7]] <= pc + 4;
+				jalr <= 0;
+				imm <= {{44{outIns[31]}}, outIns[19:12], outIns[20], outIns[30:21], 0}
+				regWrite <= 0;
+				memRead <= 0;
+				memWrite <= 0;
+				memOrReg <= 0;
+				destRegister <= 0;
+				registerRs <= outIns[19:15];
+				registerRt <= outIns[24:20];
+				aluControl <= 0;
+			7'b1100111:
+				// jalr
+				branch <= 1;
+				jump <= 1;
+				mem[outIns[11:7]] <= pc + 4;
+				imm <= {{52{outIns[31]}}, outIns[31:20]}
+				readData1 <= mem[outIns[19:15]]
+				readData2 <= 0;
+				jalr <= 1; 
+				regWrite <= 0;
+				memRead <= 0;
+				memWrite <= 0;
+				memOrReg <= 0;
+				destRegister <= 0;
+				registerRs <= outIns[19:15];
+				registerRt <= outIns[24:20];
+				aluControl <= 0;
 			7'b1100011:
 				// branches
 				begin
+					jump <= 0;
+					jalr <= 0;
 					imm <= {{52{outIns[31]}}, outIns[7], outIns[30:25], outIns[11:8], 0};
 					branch <= 1;
 					readData1 <= mem[outIns[19:15]];
@@ -128,6 +203,8 @@ always @ (posedge clk) begin
 			7'b0100011:
 				// stores
 				begin
+					jump <= 0;
+					jalr <= 0;
 					regWrite <= 0;
 					branch <= 0;
 					memRead <= 0;
@@ -169,6 +246,8 @@ always @ (posedge clk) begin
 			// loads
 			7'b0000011:
 				begin
+					jump <= 0;
+					jalr <= 0;
 					branch <= 0;
 					memRead <= 1;
 					regWrite <= 1;
@@ -230,6 +309,8 @@ always @ (posedge clk) begin
 			// add-sub
 			7'b0110011:
 				begin
+					jump <= 0;
+					jalr <= 0;
 					regWrite <= 1;
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= mem[outIns[24:20]];
@@ -339,6 +420,8 @@ always @ (posedge clk) begin
 					end
 			7'b0111011:
 				begin
+					jump <= 0;
+					jalr <= 0;
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= mem[outIns[24:20]];
 					destRegister <= outIns[11:7];
@@ -397,6 +480,8 @@ always @ (posedge clk) begin
 				end
 			7'b0011011:
 				begin
+					jump <= 0;
+					jalr <= 0;
 					readData1 <= mem[outIns[19:15]];
 					readData2 <= 0;
 					destRegister <= outIns[11:7]; 
@@ -442,6 +527,8 @@ always @ (posedge clk) begin
 					memOrReg <= 0;
 					registerRs <= 0;
 					registerRt <= 0;
+					jump <= 0;
+					jalr <= 0;
 				end
 		endcase
 	end
@@ -464,6 +551,9 @@ assign outRegWrite = regWrite;
 assign outStoreType = storeType;
 assign outBranchType = branchType;
 
+
+assign outJump = jump;
+assign outJalr = jalr;
 assign outImm = imm;
 
 endmodule

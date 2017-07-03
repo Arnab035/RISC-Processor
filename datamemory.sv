@@ -20,7 +20,7 @@ module datamemory
 	input [BUS_DATA_WIDTH-1 : 0] inAddrJump,
 	input [BUS_DATA_WIDTH-1 : 0] inResult,
 	input [BUS_DATA_WIDTH-1 : 0] inDataReg2,
-
+	input inJump,
 	input [1:0] inStoreType,
 	input [2:0] inLoadType,
 
@@ -51,6 +51,18 @@ logic [4:0] destRegister;
 logic memWrite;
 
 logic memOrReg, regWrite;
+
+// TODO : handle branching logic
+
+always_comb begin
+	if(inBranch && inZero) begin
+		outPCSrc = 1;
+	end else if(inJump) begin
+		outPCSrc = 1;
+	end else begin
+		outPCSrc = 0;
+	end
+end
 
 // TODO : handle forwarding logic for stores
 

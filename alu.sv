@@ -16,6 +16,8 @@ module alu
 	input inMemOrReg,
 	input inPCSrc,
 	input inRegWrite,
+	input inJump,
+	input inJalr,
 	input [BUS_DATA_WIDTH-1 : 0] inImm,  // immediate value
 	input [4:0] inDestRegister,
 	input [2:0] inBranchType,
@@ -40,6 +42,7 @@ module alu
 	output outMemOrReg,
 	output outPCSrc,
 	output outRegWrite,
+	output outJump,
 	output [BUS_DATA_WIDTH-1 : 0] outAddrJump,
 	output [BUS_DATA_WIDTH-1 : 0] outResult,
 	output [BUS_DATA_WIDTH-1 : 0] outDataReg2
@@ -58,7 +61,13 @@ logic [2:0] loadType;
 // for jump logic
 
 always @ (posedge clk) begin
-	addrJump <= inPc + inImm  ;
+	if(inJump && !inJalr) begin
+		addrJump <= inPc + inImm  ;
+	end else if(inJump && inJalr) begin
+		addrJump <= inData1 + inImm;
+	end else begin
+		addrJump <= inPc + inImm;
+	end
 end
 
 assign outAddrJump = addrJump;
@@ -88,6 +97,7 @@ end
 
 always_ff @ (posedge clk) begin
 	// the below logic values do not change here
+	jump <= inJump;
 	memRead <= inMemRead;
 	branch <= inBranch;
 	branchType <= inBranchType;
@@ -366,6 +376,7 @@ assign outDestRegister = destRegister;  // pass out the destination register als
 assign outLoadType = loadType;
 assign outStoreType = storeType;
 assign outZero = zero;
+assign outJump = jump;
 	
 /*	
 always_comb begin
