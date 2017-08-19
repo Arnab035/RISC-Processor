@@ -1,7 +1,5 @@
-`include "Sysbus.defs"
-
 module forwardingunit
-# (
+#(
 	BUS_DATA_WIDTH = 64
 )
 (
@@ -16,21 +14,25 @@ module forwardingunit
 	output [1:0] outForwardB
 );
 
+`include "Sysbus.defs"
+
 always_comb begin
+	$display("Inside forwarding unit\n");
 	if(inRegWriteEx && (inDestRegisterEx != 0) && (inDestRegisterEx == inRegisterRs)) begin
 		outForwardA = 2'b10;
-	end
-	else if(inRegWriteEx && (inDestRegisterEx != 0) && (inDestRegisterEx == inRegisterRt)) begin
-		outForwardB = 2'b10;
-	end
-	else if(inRegWriteMem && (inDestRegisterMem != 0) && (inDestRegisterMem != inRegisterRs) && (inDestRegisterMem == inRegisterRs)) begin
+	end else if(inRegWriteMem && (inDestRegisterMem != 0) && (inDestRegisterEx != inRegisterRs) && (inDestRegisterMem == inRegisterRs)) begin
 		outForwardA = 2'b01;
-	end
-	else if(inRegWriteMem && (inDestRegisterMem != 0) && (inDestRegisterEx != inRegisterRt) && (inDestRegisterMem == inRegisterRt)) begin
-		outForwardB = 2'b01;
-	end
-	else begin
+	end else begin	
 		outForwardA = 2'b00;
+	end
+end
+
+always_comb begin
+	if(inRegWriteEx && (inDestRegisterEx != 0) && (inDestRegisterEx == inRegisterRt)) begin
+		outForwardB = 2'b10;
+	end else if(inRegWriteMem && (inDestRegisterMem != 0) && (inDestRegisterEx != inRegisterRt) && (inDestRegisterMem == inRegisterRt)) begin
+		outForwardB = 2'b01;
+	end else begin
 		outForwardB = 2'b00;
 	end
 end
