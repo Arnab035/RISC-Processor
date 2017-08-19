@@ -1,49 +1,40 @@
-// 4th stage of pipeline
-
-`include "Sysbus.defs"
-
 module datamemory
-# (
+#(
 	BUS_DATA_WIDTH = 64,
 	BUS_TAG_WIDTH = 13
 )
 (
 	input clk,
-	input [4:0] inDestRegister,
-	input inBranch,
-	input inMemRead,
-	input inMemWrite,
-	input inMemOrReg,
-	input inPCSrc,
-	input inRegWrite,
-	input inZero,
-	input [BUS_DATA_WIDTH-1 : 0] inAddrJump,
-	input [BUS_DATA_WIDTH-1 : 0] inResult,
-	input [BUS_DATA_WIDTH-1 : 0] inDataReg2,
-	input inJump,
-	input [1:0] inStoreType,
-	input [2:0] inLoadType,
-
+	
+	// bus interface
   	input  bus_respcyc,
   	input  [BUS_DATA_WIDTH-1:0] bus_resp,
   	input  [BUS_TAG_WIDTH-1:0] bus_resptag,
+  	input  bus_reqack,
   	output bus_reqcyc,
   	output [BUS_DATA_WIDTH-1:0] bus_req,
   	output [BUS_TAG_WIDTH-1:0] bus_reqtag,
   	output bus_respack,
-
-  	// other outputs
-  	output outPCSrc,
-  	output [BUS_DATA_WIDTH-1 : 0] outAddrJump,
-  	output [BUS_DATA_WIDTH-1 : 0] outReadData,
-  	output [BUS_DATA_WIDTH-1 : 0] outResult,
-  	output [4 : 0] outDestRegister,
-  	output outMemOrReg,
-  	output outRegWrite,
-  	output outMemWrite,
-  	output [BUS_DATA_WIDTH-1 : 0] outDataReg2
+  	output outStall,
+  	output out_do_invalidate,
+  	input inMiss,
+  	input inMemWrite,
+  	input [511:0] inDataWriteBack,
+  	input [BUS_DATA_WIDTH-1 : 0] inAddress,
+  	output [63:0] out_invalid_phys_addr,
+  	output [9:0] out_write_offset,
+  	output [9:0] out_offset,
+  	output [511:0] out_data
 );
 
+`include "Sysbus.defs"
+
+enum {
+	STATE_FETCH = 2'b00,
+	STATE_WAIT = 2'b01,
+	STATE_WAIT_ONE_CLK = 2'b10,
+	STATE_GET_READY_TO_WRITE = 2'b11
+} state;	
 
 logic [BUS_DATA_WIDTH-1:0] result;
 logic [BUS_DATA_WIDTH-1:0] addrJump, readData, dataReg2;
@@ -52,87 +43,94 @@ logic memWrite;
 
 logic memOrReg, regWrite;
 
-// TODO : handle branching logic
-
-always_comb begin
-	if(inBranch && inZero) begin
-		outPCSrc = 1;
-	end else if(inJump) begin
-		outPCSrc = 1;
-	end else begin
-		outPCSrc = 0;
-	end
-end
-
 // TODO : handle forwarding logic for stores
 
 always_ff @ (posedge clk) begin
-	if(inMemRead) begin
-		bus_req <= inResult;
-		bus_reqtag[12] <= 1;   // READ
-		bus_reqtag[11:8] <= 4'b0011;  // MMIO
-		bus_reqcyc <= 1;
-	end else if(inMemWrite) begin
-		// TODO : send signal to writeback to perform a write in each clock pulse-- for each store
-		memWrite <= inMemWrite;
-		// TODO : send the value based on store type
-		case(inStoreType)
-			2'b00:  // sd
-				dataReg2 <= inDataReg2; 
-			2'b01:  // sw
-				dataReg2 <= inDataReg2[31:0];
-			2'b10:  // sh
-				dataReg2 <= inDataReg2[15:0];
-			2'b11:  // sb
-				dataReg2 <= inDataReg2[7:0];
-		endcase
-		result <= inResult;  // result is the address for store
+	if(inMiss && state == STATE_FETCH) begin
+		if(!inMemWrite) begin
+			bus_req <= inAddress & ~63;
+			bus_reqtag[12] <= 1;
+	    	bus_reqtag[11:8] <= 4'b0001;
+	    	bus_reqcyc <= 1;
+	    	state <= STATE_WAIT;
+		end else begin
+			bus_req <= inAddress;
+			bus_reqtag[12] <= 0; // write
+			bus_reqtag[11:8] <= 4'b0001;
+			bus_reqcyc <= 1;
+			state <= STATE_GET_READY_TO_WRITE;
+		end
 	end else begin
 		bus_req <= 0;
 		bus_reqtag <= 0;
 		bus_reqcyc <= 0;
-		result <= inResult;
-		destRegister <= inDestRegister;
-		memOrReg <= inMemOrReg;
-		regWrite <= inRegWrite;
 	end
 end
-
 
 always_ff @ (posedge clk) begin
-	if(bus_respcyc) begin
-		readData <= bus_resp;
-		result <= inResult;
-		destRegister <= inDestRegister;
-		memOrReg <= inMemOrReg;
-		regWrite <= inRegWrite;
+	if(state == STATE_GET_READY_TO_WRITE) begin 
+		if(write_offset < 64 * 8) begin
+			bus_req <= inDataWriteBack[write_offset +: 64];
+			write_offset <= write_offset + 64;
+			bus_reqcyc <= 1;
+		end else begin
+			bus_req <= 0;
+			bus_reqcyc <= 0;
+			state <= STATE_FETCH;
+			write_offset <= 0;
+			out_write_offset <= write_offset;
+		end
 	end
 end
 
-assign outMemOrReg = memOrReg;
-assign outRegWrite = regWrite;
-assign outAddrJump = addrJump;
-assign outPCSrc = ((inZero & inBranch) == 0) ? 1 : 0 ;
-assign outResult = result;
-assign outDataReg2 = dataReg2;
-assign outMemWrite = memWrite;
 
-always_comb begin
-	if(inLoadType == 3'b000) begin
-		outReadData = readData;                                     // ld
-	end else if(inLoadType == 3'b001) begin
-		outReadData = {{56{readData[7]}} ,readData[7:0]};           // lb
-	end else if(inLoadType == 3'b010) begin
-		outReadData = {{48{readData[15]}} ,readData[15:0]};         // lh
-	end else if(inLoadType == 3'b011) begin
-		outReadData = {{32{readData[31]}} ,readData[31:0]};         // lw
-	end else if(inLoadType == 3'b100) begin
-		outReadData = readData[7:0];                       // lbu
-	end else if(inLoadType == 3'b101) begin
-		outReadData = readData[15:0];                      // lhu
-	end else if(inLoadType == 3'b110) begin
-		outReadData = readData[31:0];                      // lwu
+logic [9:0] write_offset = 0; 
+logic [511:0] buffer;
+
+logic [9:0] offset = 0;
+logic do_invalidate = 0;
+logic [63:0] invalid_phys_addr;
+
+always_ff @ (posedge clk) begin
+	if(bus_respcyc && offset <= 64 * 8) begin
+		if(bus_resptag == 13'b0100000000000) begin
+			do_invalidate <= 1;
+			invalid_phys_addr <= bus_resp;
+			bus_respack <= 1;
+		end else begin
+			buffer[offset +: 64] <= bus_resp ;
+			bus_respack <= 1;
+			offset <= offset + 64;
+			do_invalidate <= 0;
+			invalid_phys_addr <= 0;
+		end
+	end else begin
+		bus_respack <= 0;
+    	offset <= 0;
+    	out_offset <= offset;
+    	out_data <= buffer;
+    	if(offset >= 64 * 8 && state == STATE_WAIT) begin
+    		state <= STATE_WAIT_ONE_CLK;
+    	end
+    	do_invalidate <= 0;
+    	invalid_phys_addr <= 0;
 	end
 end
+
+// pause for 2 clock cycles
+logic wait_time = 0;
+
+always_ff @ (posedge clk) begin
+	if(state == STATE_WAIT_ONE_CLK) begin
+		wait_time <= 1; 
+    	if(wait_time) begin
+      		wait_time <= 0;
+      		state <= STATE_FETCH;
+    	end
+	end
+end
+
+assign out_invalid_phys_addr = invalid_phys_addr;
+assign out_do_invalidate = do_invalidate;
 
 endmodule
