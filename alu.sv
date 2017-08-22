@@ -68,6 +68,7 @@ logic [2:0] loadType, branchType;
 
 logic [5:0] aluControl;
 
+
 always_ff @ (posedge clk) begin
 	if(!in_stall_from_dcache && !in_stall_from_icache) begin
 		if(inAluControl)
@@ -215,6 +216,13 @@ always_ff @ (posedge clk) begin
 			registerRt <= inRegisterRt;
 			outPc <= inPc;
 			case(inAluControl)
+				6'b000000:
+					begin
+						if(inRegWrite)
+							val <= inImm;
+						else
+							val <= 0;
+					end
 				6'b000001:  // addi
 					begin
 						val <= inData1 + inImm;
@@ -314,7 +322,7 @@ always_ff @ (posedge clk) begin
 
 				6'b010110: // addiw
 					begin
-						val[31:0] <= inData1[31:0] + inImm[31:0];
+						val <= inData1 + inImm;
 					end
 				6'b010111: // slliw
 					begin
