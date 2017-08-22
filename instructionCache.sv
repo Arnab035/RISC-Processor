@@ -68,30 +68,15 @@ always_comb begin
 					miss = 0;
 					instr = icache[index_bits][cache_line_offset +: 32];
 					stall = 0;
-					update_lru = 0;
 				end else if(icache[index_bits][1122:1074] == tag_bits && icache[index_bits][1123]) begin
 					miss = 0;
 					instr = icache[index_bits][cache_line_offset_new +: 32];
 					stall = 0;
-					update_lru = 1;
 				end else begin
 					miss = 1;
 					stall = 1;
 					instr = 0;
-					update_lru = 0;  // don't care
 				end
-			end
-		end
-	end
-end
-
-always_ff @ (posedge clk) begin
-	if(!in_stall_from_dcache && !in_stall_from_hazardunit) begin
-		if(!miss) begin
-			if(update_lru == 0) begin
-				lru <= 0;
-			end else if(update_lru == 1) begin
-				lru <= 1;
 			end
 		end
 	end
