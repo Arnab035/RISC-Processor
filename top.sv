@@ -162,6 +162,7 @@ module top
   decode1 dc(
     .clk(clk),
     .pc(ic_pc),
+    .reset(reset),
     .in_stall_from_hazardunit(hdu_stall),
     .inStackPtr(stackptr),
     .in_stall_from_dcache(dc_stall),
