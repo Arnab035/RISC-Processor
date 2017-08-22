@@ -170,7 +170,6 @@ assign outPCSrc = PCSrc;
 assign outFlushJump = flush_jump;
 
 logic zero_extension = 0;
-logic update_lru;
 
 always_comb begin
 	if(!in_stall_from_icache) begin
@@ -183,8 +182,7 @@ always_comb begin
 			if((inMemRead || inMemWrite) && state == CACHE_BEGIN) begin
 				if((dcache[index_bits][560:512] == tag_bits) && (dcache[index_bits][561] == 1)) begin
 				    miss = 0;
-					stall = 0;
-					update_lru = 0;                 // on a hit, update lru
+					stall = 0;                // on a hit, update lru
 					if(inMemRead) begin
 						if(inLoadType == 3'b000) begin
 							data = dcache[index_bits][cache_line_offset +: 64];            // ld
@@ -209,7 +207,7 @@ always_comb begin
 				end else if((dcache[index_bits][1123:1075] == tag_bits) && (dcache[index_bits][1124] == 1)) begin
 					miss = 0;
 					stall = 0;
-					update_lru = 1;
+					
 					if(inMemRead) begin
 						if(inLoadType == 3'b000) begin
 							data = dcache[index_bits][cache_line_offset_new +: 64];            // ld
@@ -235,27 +233,24 @@ always_comb begin
 					miss = 1;
 					stall = 1;
 					data = 0;
+					
 					if(lru == 1) begin
 						if(dcache[index_bits][562] == 1) begin
 				      		outMemWrite = 1;
 				      		outDataWriteBack = dcache[index_bits][511:0];
 				      		outAddress[5:0] = 6'b0;                // addresses are 64-byte aligned
 				      		outAddress[63:6] = {dcache[index_bits][560:512], index_bits};
-				      		$display("Dirty write to address 0x%x and data 0x%x", outAddress, outDataWriteBack);
-				      	end else begin
+				    	end else begin
 				      		outMemWrite = 0;
 				      		outDataWriteBack = 0;
 				      		outAddress = inResult;
-				      		$display("About to send address to memory: %x", inResult);
 				      	end
 					end else begin
 						if(dcache[index_bits][1125] == 1) begin    // dirty bit
-				    		// $display("about to write back");
 				    		outMemWrite = 1;
 				      		outDataWriteBack = dcache[index_bits][1074:563];  
 				      		outAddress[5:0] = 6'b0;                // addresses are 64-byte aligned
 				      		outAddress[63:6] = {dcache[index_bits][1123:1075], index_bits};
-				      		//$display("Dirty write to address 0x%x and data 0x%x", outAddress, outDataWriteBack);
 				      	end else begin
 				      		outMemWrite = 0;
 				      		outDataWriteBack = 0;
@@ -267,22 +262,6 @@ always_comb begin
 		end
 	end
 end
-
-/*
-always_ff @ (posedge clk) begin
-	if(!in_stall_from_icache) begin
-		if(inMemRead || inMemWrite) begin
-			if(!miss) begin
-				if(update_lru == 0) begin
-					lru <= 0;
-				end else if(update_lru == 1) begin
-					lru <= 1;
-				end
-			end
-		end
-	end
-end
-*/
 
 // change state
 always_ff @ (posedge clk) begin
@@ -329,7 +308,7 @@ always_ff @ (posedge clk) begin
 							2'b01:  // sw
 								begin
 									dcache[index_bits][cache_line_offset +: 32] <= dataReg2[31:0];
-									out_data_for_pending_write <= dataReg2[31:0];
+									out_data_for_pending_write <= {{32{zero_extension}},dataReg2[31:0]};
 									address_for_pending_write <= inResult;
 									size_for_pending_write <= 4'b0100;  // bytes
 									//$display("About to call do-pending-write with args : data : 0x%x, address : 0x%x", dataReg2, inResult);
@@ -337,7 +316,7 @@ always_ff @ (posedge clk) begin
 							2'b10:  // sh
 								begin
 									dcache[index_bits][cache_line_offset +: 16] <= dataReg2[15:0];
-									out_data_for_pending_write <= dataReg2[15:0];
+									out_data_for_pending_write <= {{48{zero_extension}}, dataReg2[15:0]};
 									address_for_pending_write <= inResult;
 									size_for_pending_write <= 4'b0010;
 									//$display("About to call do-pending-write with args : data : 0x%x, address : 0x%x", dataReg2, inResult);
@@ -345,7 +324,7 @@ always_ff @ (posedge clk) begin
 							2'b11:  // sb
 								begin
 									dcache[index_bits][cache_line_offset +: 8] <= dataReg2[7:0];
-									out_data_for_pending_write <= dataReg2[7:0];
+									out_data_for_pending_write <= {{56{zero_extension}}, dataReg2[7:0]};
 									address_for_pending_write <= inResult;
 									size_for_pending_write <= 4'b0001;
 									//$display("About to call do-pending-write with args : data : 0x%x, address : 0x%x", dataReg2, inResult);
