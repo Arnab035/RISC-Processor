@@ -4,6 +4,7 @@ module decode1
 )
 (
 	input clk,
+	input reset,
 	input [BUS_DATA_WIDTH-1 : 0] pc, 
 	input [31:0] outIns,
 	input [63:0] inStackPtr,
@@ -56,9 +57,11 @@ module decode1
 
 logic [BUS_DATA_WIDTH-1 : 0] mem[31:0];  
 
-initial begin
-    mem[2] = inStackPtr;
-    mem[0] = 0;
+always_comb begin
+	if(reset) begin
+    	mem[2] = inStackPtr;
+    	mem[0] = 0;
+    end
 end
 
 logic [BUS_DATA_WIDTH-1 : 0] readData1, readData2, _pc, epc;
@@ -139,7 +142,7 @@ always_ff @ (posedge clk) begin
 						imm[11:0] <= 0;
 						imm[63:12] <= {{32{outIns[31]}}, outIns[31:12]};
 						regWrite <= 1;
-						aluControl <= 6'b000001; 
+						aluControl <= 0; 
 						memOrReg <= 0;
 						registerRs <= 0;
 						registerRt <= 0;
@@ -616,12 +619,12 @@ always_ff @ (posedge clk) begin
 						jalr <= 0;
 						if(inDestRegister == outIns[19:15] && inRegWrite) begin
 							readData1 <= inRegData;
-						end else if(inDestRegisterFromEcall == outIns[24:20] && inRegWriteFromEcall) begin
+						end else if(inDestRegisterFromEcall == outIns[19:15] && inRegWriteFromEcall) begin
 							readData1 <= inRegDataFromEcall;
 						end else begin
 							readData1 <= mem[outIns[19:15]];
 						end
-						if(inDestRegister == outIns[19:15] && inRegWrite) begin
+						if(inDestRegister == outIns[24:20] && inRegWrite) begin
 							readData2 <= inRegData;
 						end else if(inDestRegisterFromEcall == outIns[24:20] && inRegWriteFromEcall) begin
 							readData2 <= inRegDataFromEcall;
@@ -690,7 +693,7 @@ always_ff @ (posedge clk) begin
 						jalr <= 0;
 						if(inDestRegister == outIns[19:15] && inRegWrite) begin
 							readData1 <= inRegData;
-						end else if(inDestRegisterFromEcall == outIns[24:20] && inRegWriteFromEcall) begin
+						end else if(inDestRegisterFromEcall == outIns[19:15] && inRegWriteFromEcall) begin
 							readData1 <= inRegDataFromEcall;
 						end else begin
 							readData1 <= mem[outIns[19:15]];
@@ -718,11 +721,11 @@ always_ff @ (posedge clk) begin
 								aluControl <= 6'b010111;
 								// slliw
 							3'b101:
-								if(outIns[31:26] == 6'b000000) begin
+								if(outIns[31:25] == 6'b0000000) begin
 									aluControl <= 6'b011000;
 									// srliw
 								end
-								else if(outIns[31:26] == 6'b010000) begin
+								else if(outIns[31:25] == 6'b0100000) begin
 									aluControl <= 6'b011001;
 								// sraiw
 								end
