@@ -19,6 +19,8 @@ module decode1
 	input [4:0] inDestRegisterFromEcall,
 	input [BUS_DATA_WIDTH-1:0] inRegDataFromEcall,
 	input inRegWriteFromEcall,
+	input in_bp_miss,
+	input in_bp_is_branch_taken,
 	output outBranch,
 	output outPCSrc,
 	output outMemRead,
@@ -40,7 +42,8 @@ module decode1
 	output [2:0] outLoadType,
 	output [1:0] outStoreType,
 	output outEcall,
-
+	output out_bp_miss,
+	output out_bp_is_branch_taken,
 	// ecall registers
 	output [63:0] outMem10,
 	output [63:0] outMem11,
@@ -99,6 +102,8 @@ always_ff @ (posedge clk) begin
 	end
 end
 
+logic bp_miss, bp_is_branch_taken;
+
 always_ff @ (posedge clk) begin
 	if(!in_stall_from_dcache && !in_stall_from_icache) begin 
 		if(inFlushFromJump || inFlushFromEcall || in_stall_from_hazardunit) begin          
@@ -123,9 +128,13 @@ always_ff @ (posedge clk) begin
 			_pc <= 0;
 			epc <= 0;
 			pcSrc <= 0;
+			bp_is_branch_taken <= 0;
+			bp_miss <= 0;
 		end else begin
 			_pc <= pc;
 			pcSrc <= 0;          // this only becomes 1 when there is a branch taken
+			bp_miss <= in_bp_miss;
+			bp_is_branch_taken <= in_bp_is_branch_taken;
 			case(outIns[6:0])
 				// lui
 				7'b0110111:
@@ -777,7 +786,8 @@ assign outRegWrite = regWrite;
 assign outStoreType = storeType;
 assign outBranchType = branchType;
 assign outEcall = ecall;
-
+assign out_bp_miss = bp_miss;
+assign out_bp_is_branch_taken = bp_is_branch_taken;
 assign outJump = jump;
 assign outJalr = jalr;
 assign outImm = imm;

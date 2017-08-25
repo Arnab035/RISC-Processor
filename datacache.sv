@@ -36,6 +36,8 @@ module datacache
 	input [63 : 0] in_invalid_phys_addr_2,
 	input in_stall_from_icache,
 	input [63 : 0] inPc,
+	input in_bp_miss,
+	input in_bp_is_branch_taken,
 	output outMiss,
 	output outStall,
 	output outDoPendingWrite,        // will go to wb
@@ -57,7 +59,14 @@ module datacache
   	output outEcall,
   	output [63 : 0] outEpc,
   	output outJump,
-  	output [63 : 0] outPc
+  	output [63 : 0] outPc,
+  	output write_to_bp,
+	output [63 : 0] branch_source,
+	output [63 : 0] branch_target,
+	output bp_fault,
+	output is_actual_branch_taken,
+	output in_update_state,
+	output [63 : 0] in_source_address
 );
 
 `include "Sysbus.defs"
@@ -130,15 +139,67 @@ logic flush_jump=0;
 
 logic PCSrc, block_to_write;
 
-
-assign	outAddrJump = inAddrJump;
 assign  PCSrc = (((inZero && inBranch) == 1) || inJump) ? 1 : 0 ;
 
-/* forwarding values ----------------
-*****    ld $2,0($3)  
-		 sd $2,0($8)  
-*/
-
+always_comb begin
+	if(!in_stall_from_icache) begin
+		if(in_bp_is_branch_taken) begin
+			if(PCSrc) begin
+				flush_jump = 0;  // do not flush go ahead
+				bp_fault = 0;
+				write_to_bp = 0;
+				is_actual_branch_taken = 1;
+				in_update_state = 1;
+				in_source_address = inPc;
+			end else begin
+				flush_jump = 1;
+				bp_fault = 1;
+				outAddrJump = inPc + 4;    // branch assumed to be taken, but not taken
+				write_to_bp = 0;
+				is_actual_branch_taken = 0;
+				in_update_state = 1;
+				in_source_address = inPc;
+			end
+		end else begin
+			if(in_bp_miss) begin         // if there is a miss and you need to write to bp
+				if(PCSrc) begin
+					flush_jump = 1;
+					write_to_bp = 1;
+					branch_source = inPc;
+					branch_target = inAddrJump;
+					bp_fault = 1;
+					outAddrJump = inAddrJump;
+					is_actual_branch_taken = 1;
+					in_update_state = 0;
+					in_source_address = inPc;
+				end else begin
+					flush_jump = 0;
+					write_to_bp = 0;
+					bp_fault = 0;
+					is_actual_branch_taken = 0;
+					in_update_state = 0;             // if it is a miss and not a branch actually, no state update
+				end
+			end else begin
+				if(PCSrc) begin
+					flush_jump = 1;
+					bp_fault = 1;
+					outAddrJump = inAddrJump;  // branch not assumed to be taken, but actually is taken
+					write_to_bp = 0;
+					is_actual_branch_taken = 1;
+					in_update_state = 1;
+					in_source_address = inPc;
+				end else begin
+					flush_jump = 0;
+					bp_fault = 0;
+					write_to_bp = 0;
+					is_actual_branch_taken = 0;
+					in_update_state = 1;
+					in_source_address = inPc;
+				end
+			end
+		end
+	end
+end
 
 always_comb begin
 	if(!in_stall_from_icache) begin
@@ -150,6 +211,7 @@ always_comb begin
 	end
 end
 
+/*
 always_comb begin
 	if(!in_stall_from_icache) begin 
 		if(inFlushFromEcall) begin
@@ -165,6 +227,7 @@ always_comb begin
 		end
 	end
 end
+*/
 
 assign outPCSrc = PCSrc;
 assign outFlushJump = flush_jump;

@@ -32,7 +32,8 @@ module alu
 	input [BUS_DATA_WIDTH-1 : 0] inResultEx,
 	input [BUS_DATA_WIDTH-1 : 0] inResultMem,
 	input [63:0] inEpc,
-
+	input in_bp_miss,
+	input in_bp_is_branch_taken,
 	// outputs are here
 	output [1:0] outStoreType,
 	output [2:0] outLoadType,
@@ -51,7 +52,9 @@ module alu
 	output [BUS_DATA_WIDTH-1 : 0] outDataReg2,
 	output outEcall,
 	output [63:0] outEpc,
-	output [63:0] outPc
+	output [63:0] outPc,
+	output out_bp_miss,
+	output out_bp_is_branch_taken
 );
 
 `include "Sysbus.defs"
@@ -100,6 +103,7 @@ end
 assign outAddrJump = addrJump;
 
 logic [127:0] val_for_multiply;
+logic bp_miss, bp_is_branch_taken;
 
 always_comb begin
 	if(!in_stall_from_dcache && !in_stall_from_icache) begin
@@ -198,6 +202,8 @@ always_ff @ (posedge clk) begin
 			epc <= 0;
 			registerRt <= 0;
 			outPc <= 0;
+			bp_miss <= 0;
+			bp_is_branch_taken <= 0;
 		end else begin
 			// the below logic values do not change here
 			ecall <= inEcall;
@@ -215,6 +221,8 @@ always_ff @ (posedge clk) begin
 			epc <= inEpc;
 			registerRt <= inRegisterRt;
 			outPc <= inPc;
+			bp_miss <= in_bp_miss;
+			bp_is_branch_taken <= in_bp_is_branch_taken;
 			case(inAluControl)
 				6'b000000:
 					begin
@@ -454,7 +462,8 @@ assign outZero = zero;
 assign outJump = jump;
 assign outEpc = epc;
 assign outRegisterRt = registerRt;
-
+assign out_bp_miss = bp_miss;
+assign out_bp_is_branch_taken = bp_is_branch_taken;
 assign outEcall = ecall;
 	
 endmodule

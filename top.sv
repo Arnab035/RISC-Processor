@@ -33,14 +33,14 @@ module top
     if(ic_stall || dc_stall || hdu_stall) begin
       npc = pc;
     end else begin
-      if(dc_pcsrc && wback_flush)
+      if(dc_bpfault && wback_flush)
         npc = wback_epc;
-      else if(dc_pcsrc)
+      else if(dc_bpfault)
         npc = dc_addrjump;
       else if(wback_flush)
         npc = wback_epc;
       else
-        npc = pc + 4;
+        npc = bp_outpc;
     end
   end
 
@@ -62,6 +62,26 @@ module top
   logic [63:0] dmembus_req, dmembus_resp;
   logic dmembus_reqcyc, dmembus_respack, dmembus_respcyc, dmembus_reqack;
   logic [12:0] dmembus_reqtag, dmembus_resptag;
+
+  logic bp_miss, bp_branchtaken;
+  logic [63:0] bp_outpc;
+
+  branchpredictor bp(
+    .clk(clk),
+    .inPc(pc),
+    .in_write_to_bp(dc_writetobp),
+    .in_is_update_state(dc_updatestate),
+    .in_branch_source(dc_branchsource),
+    .in_branch_target(dc_branchtarget),
+    .in_is_actual_branch_taken(dc_actualbranchtaken),
+    .in_source(dc_sourceaddress),         // pc used to update the state
+    .in_stall_from_icache(ic_stall),
+    .in_stall_from_dcache(dc_stall),
+    .in_stall_from_hazardunit(hdu_stall),
+    .miss(bp_miss),
+    .is_branch_taken(bp_branchtaken),
+    .outPc(bp_outpc) 
+  );
 
   arbiter ab(
     .clk(clk),
@@ -158,6 +178,7 @@ module top
   logic dec_ecall, dec_stall;
 
   logic [63:0] dec_mem10, dec_mem11, dec_mem12, dec_mem13, dec_mem14, dec_mem15, dec_mem16, dec_mem17, dec_epc;
+  logic dec_bp_miss, dec_bp_is_branch_taken;
   
   decode1 dc(
     .clk(clk),
@@ -176,6 +197,8 @@ module top
     .inDestRegisterFromEcall(wback_destregisterfromecall),
     .inRegDataFromEcall(wback_regdatafromecall),
     .inFlushFromJump(dc_flushjump),
+    .in_bp_miss(bp_miss),
+    .in_bp_is_branch_taken(bp_branchtaken),
     .outBranch(dec_branch),
     .outPCSrc(dec_pcsrc),
     .outMemRead(dec_memread),
@@ -198,6 +221,8 @@ module top
     .outBranchType(dec_branchtype),
     .outEcall(dec_ecall),
     .outEpc(dec_epc),
+    .out_bp_miss(dec_bp_miss),
+    .out_bp_is_branch_taken(dec_bp_is_branch_taken),
     .outMem10(dec_mem10),
     .outMem11(dec_mem11),
     .outMem12(dec_mem12),
@@ -223,7 +248,7 @@ forwardingunit fw(
 );
 
 logic [4:0] alu_destregister, alu_registerrt;
-logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero, alu_jump, alu_ecall;
+logic alu_branch,alu_memread, alu_memwrite, alu_memorreg,alu_pcsrc, alu_regwrite, alu_zero, alu_jump, alu_ecall, alu_bp_miss, alu_bp_is_branch_taken;
 logic [BUS_DATA_WIDTH-1 : 0] alu_addrjump, alu_result, alu_datareg2, alu_epc, alu_pc;
 logic [2:0] alu_loadtype;
 logic [1:0] alu_storetype;
@@ -259,6 +284,8 @@ alu al(
     .inFlushFromJump(dc_flushjump),
     .in_stall_from_dcache(dc_stall),
     .in_stall_from_icache(ic_stall),
+    .in_bp_miss(dec_bp_miss),
+    .in_bp_is_branch_taken(dec_bp_is_branch_taken),
     .outStoreType(alu_storetype),
     .outLoadType(alu_loadtype),
     .outDestRegister(alu_destregister),
@@ -276,11 +303,14 @@ alu al(
     .outDataReg2(alu_datareg2),
     .outEcall(alu_ecall),
     .outEpc(alu_epc),
-    .outPc(alu_pc)
+    .outPc(alu_pc),
+    .out_bp_miss(alu_bp_miss),
+    .out_bp_is_branch_taken(alu_bp_is_branch_taken)
 );
 
-logic dc_miss, dc_dopendingwrite, dc_pcsrc, dc_memorreg, dc_regwrite, dc_memwrite, dc_ecall, dc_stall, dc_flushjump, dc_flushecall, dc_memread, dc_jump;
-logic [63:0] dc_addresspendingwrite, dc_addrjump, dc_readdata, dc_result, dc_address, dc_epc, dc_pc;
+logic dc_miss, dc_dopendingwrite, dc_pcsrc, dc_memorreg, dc_regwrite, dc_memwrite, dc_ecall, dc_stall, dc_flushjump, dc_flushecall, dc_memread, dc_jump, dc_writetobp, dc_bpfault;
+logic dc_actualbranchtaken, dc_updatestate;
+logic [63:0] dc_addresspendingwrite, dc_addrjump, dc_readdata, dc_result, dc_address, dc_epc, dc_pc, dc_branchsource, dc_branchtarget, dc_sourceaddress;
 logic [4:0] dc_destregister;
 logic [511:0] dc_datawriteback;
 logic [63 : 0] dc_data_for_pending_write_64;
@@ -317,6 +347,8 @@ datacache dch(
     .in_stall_from_icache(ic_stall),
     .inEpc(alu_epc),
     .inPc(alu_pc),
+    .in_bp_miss(alu_bp_miss),
+    .in_bp_is_branch_taken(alu_bp_is_branch_taken),
     .outPc(dc_pc),
     .outJump(dc_jump),
     .outMiss(dc_miss),
@@ -338,7 +370,14 @@ datacache dch(
     .outEpc(dc_epc),
     .outMemRead(dc_memread),
     .outSizePendingWrite(dcSizePendingWrite),
-    .out_data_for_pending_write(dc_data_for_pending_write_64)
+    .out_data_for_pending_write(dc_data_for_pending_write_64),
+    .write_to_bp(dc_writetobp),
+    .branch_source(dc_branchsource),
+    .branch_target(dc_branchtarget),
+    .bp_fault(dc_bpfault),
+    .is_actual_branch_taken(dc_actualbranchtaken),
+    .in_update_state(dc_updatestate),
+    .in_source_address(dc_sourceaddress)
    );
 
 
