@@ -201,7 +201,6 @@ always_ff @ (posedge clk) begin
 			val <= 0;
 			epc <= 0;
 			registerRt <= 0;
-			outPc <= 0;
 			bp_miss <= 0;
 			bp_is_branch_taken <= 0;
 		end else begin

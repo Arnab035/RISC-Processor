@@ -211,24 +211,6 @@ always_comb begin
 	end
 end
 
-/*
-always_comb begin
-	if(!in_stall_from_icache) begin 
-		if(inFlushFromEcall) begin
-			flush_jump = 0;
-		end else begin
-			if(!inMemRead && !inMemWrite) begin
-				if(PCSrc) begin
-					flush_jump = 1;
-				end else begin
-					flush_jump = 0;
-				end
-			end
-		end
-	end
-end
-*/
-
 assign outPCSrc = PCSrc;
 assign outFlushJump = flush_jump;
 
@@ -530,7 +512,6 @@ always_ff @ (posedge clk) begin
 			ecall <= 0;
 			epc <= 0;
 			memRead <= 0;
-			outPc <= 0;
 			outJump <= 0;
 		end else begin
 			memRead <= inMemRead;

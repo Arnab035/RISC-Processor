@@ -78,7 +78,7 @@ module top
     .in_stall_from_icache(ic_stall),
     .in_stall_from_dcache(dc_stall),
     .in_stall_from_hazardunit(hdu_stall),
-    .miss(bp_miss),
+    .outMiss(bp_miss),
     .is_branch_taken(bp_branchtaken),
     .outPc(bp_outpc) 
   );

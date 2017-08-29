@@ -11,12 +11,16 @@ module branchpredictor
 	input in_stall_from_icache,
 	input in_stall_from_dcache,
 	input in_stall_from_hazardunit,
-	output miss,
+	output outMiss,
 	output is_branch_taken,
 	output [63 : 0] outPc 
 );
 
 logic [120:0] btbuffer[1023:0];
+logic miss;
+
+logic [9:0] index_bits;
+logic [53:0] tag_bits;
 
 /*
 	-- general Branch Target Buffer design -- 10 index bits means 1024 entries
@@ -51,13 +55,15 @@ always_comb begin
 	end
 end
 
+assign outMiss = miss;
+
 always_ff @ (posedge clk) begin
 	if(!in_stall_from_icache && !in_stall_from_dcache && !in_stall_from_hazardunit) begin
 		if(in_write_to_bp) begin
 			btbuffer[in_branch_source[9:0]][65:2] <= in_branch_target;
 			btbuffer[in_branch_source[9:0]][119:66] <= in_branch_source[63:10];
 			btbuffer[in_branch_source[9:0]][120] <= 1;   // valid 
-			btbuffer[in_branch_source[9:0]][1:0] <= 2'b01;   // branch predicted not taken, but actually taken
+			btbuffer[in_branch_source[9:0]][1:0] <= 2'b10;   // branch predicted not taken, but actually taken
 		end
 	end
 end

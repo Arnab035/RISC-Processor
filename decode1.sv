@@ -125,7 +125,6 @@ always_ff @ (posedge clk) begin
 			storeType <= 0;
 			loadType <= 0;
 			branchType <= 0;
-			_pc <= 0;
 			epc <= 0;
 			pcSrc <= 0;
 			bp_is_branch_taken <= 0;
@@ -388,7 +387,7 @@ always_ff @ (posedge clk) begin
 						memOrReg <= 0; 
 						if(inDestRegister == outIns[19:15] && inRegWrite) begin
 							readData1 <= inRegData;
-						end else if(inDestRegisterFromEcall == outIns[24:20] && inRegWriteFromEcall) begin
+						end else if(inDestRegisterFromEcall == outIns[19:15] && inRegWriteFromEcall) begin
 							readData1 <= inRegDataFromEcall;
 						end else begin
 							readData1 <= mem[outIns[19:15]];
@@ -447,7 +446,7 @@ always_ff @ (posedge clk) begin
 						memOrReg <= 1; // go from memory
 						if(inDestRegister == outIns[19:15] && inRegWrite) begin
 							readData1 <= inRegData;
-						end else if(inDestRegister == outIns[24:20] && inRegWriteFromEcall) begin 
+						end else if(inDestRegisterFromEcall == outIns[19:15] && inRegWriteFromEcall) begin 
 							readData1 <= inRegDataFromEcall;
 						end else begin
 							readData1 <= mem[outIns[19:15]];
