@@ -124,7 +124,6 @@ always_ff @ (posedge clk) begin
 				//$display("Instruction being executed is 0x%x at address 0x%x", instr, pc);
 			end else begin
 				outInstr <= 0;
-				outPc <= 0;
 			end
 		end
 	end
